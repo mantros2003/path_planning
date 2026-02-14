@@ -1,0 +1,21 @@
+<library path="lib/libcustom_planner_lib">
+    <class name="custom_planner/DijkstraPlanner"
+           type="custom_planner::DijkstraPlanner"
+           base_class_type="nav_core::BaseGlobalPlanner">
+        <description></description>
+    </class>
+
+    <class name="custom_planner/RRTPlanner"
+           type="custom_planner::RRTPlanner"
+           base_class_type="nav_core::BaseGlobalPlanner">
+        <description></description>
+    </class>
+
+
+    <class name="custom_planner/AStarPlanner"
+           type="custom_planner::AStarPlanner"
+           base_class_type="nav_core::BaseGlobalPlanner">
+        <description></description>
+    </class>
+
+</library>

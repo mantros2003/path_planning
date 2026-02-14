@@ -1,0 +1,19 @@
+TrajectoryPlannerROS:
+# Robot Velocity Limits
+    max_vel_x: 0.5
+    min_vel_x: 0.1
+    max_vel_theta: 1.0
+    min_in_place_vel_theta: 0.4
+
+    # Acceleration Limits
+    acc_lim_x: 2.5
+    acc_lim_theta: 3.2
+
+    # Goal Tolerance
+    yaw_goal_tolerance: 0.1
+    xy_goal_tolerance: 0.2
+
+    # Forward Simulation (Higher = more stable but slower)
+    sim_time: 1.5
+    vx_samples: 3
+    vtheta_samples: 20
