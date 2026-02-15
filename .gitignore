@@ -25,6 +25,7 @@
 documentation
 Documentation
 .idea
+*.swp
 # Visual Studio files
 .vs
 *.db
