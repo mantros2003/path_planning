@@ -83,7 +83,7 @@ bool RRTKDPlanner::makePlan(
         }
 
         // If node already explored, continue
-        if (parents[rand_index] != -1 || rand_index == root) continue;
+        if (parents[rand_index] != -1 || rand_index == start_index) continue;
 
         // Convert random index to point for k-d Tree search
         point rand_pt = { (int)(rand_index % width_), (int)(rand_index / width_) };
