@@ -134,11 +134,24 @@ include_directories(
 #   src/${PROJECT_NAME}/custom_nav.cpp
 # )
 
+add_library(kd_tree_lib
+  src/kd_tree.cpp
+)
+
+target_link_libraries(kd_tree_lib
+  ${catkin_LIBRARIES}
+)
+
 add_library(custom_planner_lib
     plugins/dijkstra_planner.cpp
     plugins/a_star.cpp
     plugins/rrt.cpp
     plugins/rrt_kd.cpp
+)
+
+target_link_libraries(custom_planner_lib
+  kd_tree_lib
+  ${catkin_LIBRARIES}
 )
 
 ## Add cmake target dependencies of the library
