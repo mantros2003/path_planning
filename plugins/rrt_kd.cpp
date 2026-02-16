@@ -10,11 +10,11 @@
 
 #define INF 1e9
 
-PLUGINLIB_EXPORT_CLASS(custom_planner::RRTPlanner, nav_core::BaseGlobalPlanner)
+PLUGINLIB_EXPORT_CLASS(custom_planner::RRTKDPlanner, nav_core::BaseGlobalPlanner)
 
 namespace custom_planner {
 
-void RRTPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
+void RRTKDPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
     if (!initialized_) {
         costmap_ = costmap_ros->getCostmap();
         initialized_ = true;
@@ -26,7 +26,7 @@ void RRTPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_
     }
 }
 
-bool RRTPlanner::makePlan(
+bool RRTKDPlanner::makePlan(
     const geometry_msgs::PoseStamped& start,
     const geometry_msgs::PoseStamped& goal,
     std::vector<geometry_msgs::PoseStamped>& plan
@@ -135,7 +135,7 @@ bool RRTPlanner::makePlan(
     return true;
 }
 
-bool RRTPlanner::hasObstacle(unsigned int start, unsigned int end) {
+bool RRTKDPlanner::hasObstacle(unsigned int start, unsigned int end) {
     int sx = start % width_, sy = start / width_, gx = end % width_, gy = end / width_;
     for (base_local_planner::LineIterator line(sx, sy, gx, gy); line.isValid(); line.advance()) {
         if (costmap_->getCost(line.getX(), line.getY()) >= costmap_2d::LETHAL_OBSTACLE) return true;
@@ -143,7 +143,7 @@ bool RRTPlanner::hasObstacle(unsigned int start, unsigned int end) {
     return false;
 }
 
-unsigned int RRTPlanner::steer(unsigned int from, unsigned int to, double step) {
+unsigned int RRTKDPlanner::steer(unsigned int from, unsigned int to, double step) {
     int sx = from % width_, sy = from / width_, gx = to % width_, gy = to / width_;
     double dx = gx - sx;
     double dy = gy - sy;

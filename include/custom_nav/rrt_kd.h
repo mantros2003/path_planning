@@ -10,10 +10,10 @@
 
 namespace custom_planner {
 
-class RRTPlanner : public nav_core::BaseGlobalPlanner
+class RRTKDPlanner : public nav_core::BaseGlobalPlanner
 {
     public:
-        RRTPlanner() : costmap_(nullptr), initialized_(false) {}
+        RRTKDPlanner() : costmap_(nullptr), initialized_(false) {}
         void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
         bool makePlan(
             const geometry_msgs::PoseStamped& start,

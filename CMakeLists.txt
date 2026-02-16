@@ -129,6 +129,7 @@ add_library(custom_planner_lib
     plugins/dijkstra_planner.cpp
     plugins/a_star.cpp
     plugins/rrt.cpp
+    plugins/rrt_kd.cpp
 )
 
 ## Add cmake target dependencies of the library

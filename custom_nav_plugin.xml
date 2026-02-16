@@ -10,7 +10,12 @@
            base_class_type="nav_core::BaseGlobalPlanner">
         <description></description>
     </class>
-
+    
+    <class name="custom_planner/RRTKDPlanner"
+           type="custom_planner::RRTKDPlanner"
+           base_class_type="nav_core::BaseGlobalPlanner">
+        <description></description>
+    </class>
 
     <class name="custom_planner/AStarPlanner"
            type="custom_planner::AStarPlanner"
