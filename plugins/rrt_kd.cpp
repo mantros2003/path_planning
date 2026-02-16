@@ -6,12 +6,12 @@
 #include <random>
 #include <cmath>
 
-// Assuming your kd_tree.h defines 'point' as std::pair<int, int>
-// and the kdTree class is accessible.
-
 #define INF 1e9
 
-PLUGINLIB_EXPORT_CLASS(custom_planner::RRTKDPlanner, nav_core::BaseGlobalPlanner)
+PLUGINLIB_EXPORT_CLASS(
+    custom_planner::RRTKDPlanner,
+    nav_core::BaseGlobalPlanner
+)
 
 namespace custom_planner {
 
@@ -21,7 +21,8 @@ void RRTKDPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costma
         initialized_ = true;
         height_ = costmap_->getSizeInCellsY();
         width_ = costmap_->getSizeInCellsX();
-        ROS_INFO("Initialized RRT planner with map of size %d * %d", height_, width_);
+
+        ROS_INFO("Initialized RRT planner[kd Tree version] with map of size %d * %d", height_, width_);
     } else {
         ROS_WARN("This node has already been initialized...");
     }
@@ -32,9 +33,14 @@ bool RRTKDPlanner::makePlan(
     const geometry_msgs::PoseStamped& goal,
     std::vector<geometry_msgs::PoseStamped>& plan
 ) {
+    ROS_INFO("Making path");
+
     ros::Time start_time = ros::Time::now();
 
+    // The start and goal x, y coordinates
     unsigned int sx, sy, gx, gy;
+
+    // Get map coordinates
     if (!costmap_->worldToMap(start.pose.position.x, start.pose.position.y, sx, sy) ||
         !costmap_->worldToMap(goal.pose.position.x, goal.pose.position.y, gx, gy)) {
         ROS_ERROR("Goal or start is outside map boundaries");
@@ -44,6 +50,8 @@ bool RRTKDPlanner::makePlan(
     int start_index = costmap_->getIndex(sx, sy);
     int goal_index = costmap_->getIndex(gx, gy);
 
+    ROS_INFO("Start index: %d, Goal index: %d", start_index, goal_index);
+
     // Hyperparameters
     unsigned int max_iters = 100000;
     double goal_bias = 0.1;
@@ -51,17 +59,18 @@ bool RRTKDPlanner::makePlan(
     double goal_tolerance = 5.0;
     bool goal_reached = false;
 
+    // Initialize random number generator
     std::random_device dev;
     std::mt19937 rng(dev());
     std::uniform_int_distribution<unsigned int> uniform_dist(0, height_ * width_ - 1);
     std::uniform_real_distribution<> rand01(0.0, 1.0);
 
-    // --- KD-TREE INTEGRATION ---
-    kdTree tree; 
+    // kd Tree integration
+    kdTree tree;
     std::vector<int> parents(height_ * width_, -1);
 
     // Initialize the root in the tree
-    point start_pt = { (int)sx, (int)sy };
+    point start_pt = { (int) sx, (int) sy };
     tree.insert(start_pt);
     parents[start_index] = start_index;
 
@@ -73,22 +82,24 @@ bool RRTKDPlanner::makePlan(
             rand_index = uniform_dist(rng);
         }
 
+        // If node already explored, continue
+        if (parents[rand_index] != -1 || rand_index == root) continue;
+
         // Convert random index to point for k-d Tree search
         point rand_pt = { (int)(rand_index % width_), (int)(rand_index / width_) };
 
-        // 1. Find Nearest using k-d Tree (O(log n))
+        // Find the nearest neighbour to the selected node
+        // Implemented using kd Tree
         point near_pt = tree.nearest(rand_pt);
         unsigned int near_index = costmap_->getIndex(near_pt.first, near_pt.second);
 
-        // 2. Steer from near towards rand
+        // Steer from near towards rand
         unsigned int new_index = steer(near_index, rand_index, step);
 
-        // 3. Collision and Duplicate Check
-        if (new_index == near_index || parents[new_index] != -1 || hasObstacle(near_index, new_index)) {
-            continue;
-        }
+        // Collision and Duplicate Check
+        if (new_index == near_index || parents[new_index] != -1 || hasObstacle(near_index, new_index)) continue;
 
-        // 4. Add to tree
+        // Add to tree
         point new_pt = { (int)(new_index % width_), (int)(new_index / width_) };
         tree.insert(new_pt);
         parents[new_index] = near_index;
@@ -99,8 +110,7 @@ bool RRTKDPlanner::makePlan(
             break;
         }
 
-        double dist_to_goal = std::sqrt(std::pow((int)(new_index % width_) - (int)gx, 2) + 
-                                       std::pow((int)(new_index / width_) - (int)gy, 2));
+        double dist_to_goal = distance(new_index % width_, new_index / width_, (int) gx, (int) gy);
         
         if (dist_to_goal < goal_tolerance) {
             parents[goal_index] = new_index;
@@ -148,7 +158,7 @@ unsigned int RRTKDPlanner::steer(unsigned int from, unsigned int to, double step
     int sx = from % width_, sy = from / width_, gx = to % width_, gy = to / width_;
     double dx = gx - sx;
     double dy = gy - sy;
-    double len = std::sqrt(dx*dx + dy*dy);
+    double len = distance(gx, gy, sx, sy);
 
     if (len <= step) return to;
 

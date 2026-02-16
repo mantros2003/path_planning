@@ -11,7 +11,7 @@ inline double squared_dist(int x1, int y1, int x2, int y2) {
     return (double)(dx * dx + dy * dy);
 }
 
-inline double dist(int x1, int y1, int x2, int y2) {
+inline double distance(int x1, int y1, int x2, int y2) {
     return std::sqrt(squared_dist(x1, y1, x2, y2));
 }
 

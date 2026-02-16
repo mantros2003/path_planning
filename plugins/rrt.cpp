@@ -123,7 +123,7 @@ bool RRTPlanner::makePlan(
         return false;
     }
 
-    cnt = 0;
+    // cnt = 0;
 
     // Path reconstruction
     unsigned int curr = goal_index;
