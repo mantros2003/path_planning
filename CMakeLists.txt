@@ -8,9 +8,12 @@ project(custom_nav)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  nav_core
-  geometry_msgs
   roscpp
+  nav_core
+  costmap_2d
+  pluginlib
+  tf
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -107,6 +110,12 @@ catkin_package(
 #  LIBRARIES custom_nav
 #  CATKIN_DEPENDS roscpp
 #  DEPENDS system_lib
+)
+
+catkin_package(
+  INCLUDE_DIRS include
+  LIBRARIES custom_planner_lib kd_tree_lib
+  CATKIN_DEPENDS roscpp nav_core costmap_2d pluginlib tf geometry_msgs
 )
 
 ###########

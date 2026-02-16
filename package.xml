@@ -49,16 +49,13 @@
   <!-- Use doc_depend for packages you need only for building documentation: -->
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>roscpp</build_depend>
-  <build_depend>geometry_msgs</build_depend>
-  <build_depend>nav_core</build_depend>
-  <build_export_depend>roscpp</build_export_depend>
-  <build_export_depend>geometry_msgs</build_export_depend>
-  <build_export_depend>nav_core</build_export_depend>
-  <exec_depend>roscpp</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>nav_core</exec_depend>
 
+  <depend>roscpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_core</depend>
+  <depend>costmap_2d</depend>
+  <depend>pluginlib</depend>
+  <depend>tf</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
