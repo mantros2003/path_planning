@@ -1,4 +1,4 @@
-#include <custom_nav/rrt_kd.h>
+#include <custom_nav/rrt.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/line_iterator.h>
 #include <cstdint>
