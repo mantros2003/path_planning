@@ -33,8 +33,16 @@ point kdTree::nearest(point p) {
     else return nodes[best_node].p;
 }
 
-int root;
-std::vector<kdTreeNode> nodes;
+/**
+ * Returns all the points that are within raius of p
+ */
+std::vector<point> kdTree::radius_search(point p, double radius) {
+    std::vector<point> result;
+    if (root != -1) {
+        _radius_search(root, p, radius * radius, 0, result);
+    }
+    return result;
+}
 
 // Internal recursive insert function
 void kdTree::_insert(int root, point p, uint depth) {
@@ -78,4 +86,24 @@ void kdTree::_nearest(int root, point p, uint depth, int& best_node, double& min
 
     // Only check the other side if there is a chance that a better point exists on the other side
     if ((diff * diff) < min_dist) _nearest(far, p, depth + 1, best_node, min_dist);
+}
+
+// Internal recursive radius search
+void kdTree::_radius_search(int node_idx, point p, double sq_radius, uint depth, std::vector<point>& result) {
+    if (node_idx == -1) return;
+
+    double d = squared_dist(nodes[node_idx].p.first, nodes[node_idx].p.second, p.first, p.second);
+    if (d <= sq_radius) {
+        result.push_back(nodes[node_idx].p);
+    }
+
+    double diff = (depth % 2 == 0) ? p.first - nodes[node_idx].p.first : p.second - nodes[node_idx].p.second;
+    int near = (diff < 0) ? nodes[node_idx].left : nodes[node_idx].right;
+    int far = (diff < 0) ? nodes[node_idx].right : nodes[node_idx].left;
+
+    _radius_search(near, p, sq_radius, depth + 1, result);
+
+    if ((diff * diff) <= sq_radius) {
+        _radius_search(far, p, sq_radius, depth + 1, result);
+    }
 }

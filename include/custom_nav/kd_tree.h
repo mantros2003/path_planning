@@ -29,6 +29,7 @@ public:
 
     void insert(point p);
     point nearest(point p);
+    std::vector<point> radius_search(point p, double radius);
 
 private:
     int root;
@@ -36,6 +37,7 @@ private:
 
     void _insert(int root, point p, uint depth);
     void _nearest(int, point, uint, int&, double&);
+    void _radius_search(int node_idx, point p, double sq_radius, uint depth, std::vector<point>& result);
 };
 
 #endif // KD_TREE_H
