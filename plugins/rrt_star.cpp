@@ -1,4 +1,4 @@
-#include <custom_nav/rrt_kd.h>
+#include <custom_nav/rrt_star.h>
 #include <custom_nav/kd_tree.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/line_iterator.h>
@@ -15,7 +15,7 @@ PLUGINLIB_EXPORT_CLASS(
 
 namespace custom_planner {
 
-void RRTKDPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
+void RRTStarPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
     if (!initialized_) {
         costmap_ = costmap_ros->getCostmap();
         initialized_ = true;
@@ -28,7 +28,7 @@ void RRTKDPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costma
     }
 }
 
-bool RRTKDPlanner::makePlan(
+bool RRTStarPlanner::makePlan(
     const geometry_msgs::PoseStamped& start,
     const geometry_msgs::PoseStamped& goal,
     std::vector<geometry_msgs::PoseStamped>& plan
@@ -170,7 +170,7 @@ bool RRTKDPlanner::makePlan(
     return true;
 }
 
-bool RRTKDPlanner::hasObstacle(unsigned int start, unsigned int end) {
+bool RRTStarPlanner::hasObstacle(unsigned int start, unsigned int end) {
     int sx = start % width_, sy = start / width_, gx = end % width_, gy = end / width_;
     for (base_local_planner::LineIterator line(sx, sy, gx, gy); line.isValid(); line.advance()) {
         if (costmap_->getCost(line.getX(), line.getY()) >= costmap_2d::LETHAL_OBSTACLE) return true;
@@ -178,7 +178,7 @@ bool RRTKDPlanner::hasObstacle(unsigned int start, unsigned int end) {
     return false;
 }
 
-unsigned int RRTKDPlanner::steer(unsigned int from, unsigned int to, double step) {
+unsigned int RRTStarPlanner::steer(unsigned int from, unsigned int to, double step) {
     int sx = from % width_, sy = from / width_, gx = to % width_, gy = to / width_;
     double dx = gx - sx;
     double dy = gy - sy;
