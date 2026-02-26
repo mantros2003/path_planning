@@ -147,6 +147,7 @@ add_library(custom_planner_lib
     plugins/a_star.cpp
     plugins/rrt.cpp
     plugins/rrt_kd.cpp
+    plugins/rrt_star.cpp
 )
 
 target_link_libraries(custom_planner_lib

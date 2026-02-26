@@ -9,7 +9,7 @@
 #define INF 1e9
 
 PLUGINLIB_EXPORT_CLASS(
-    custom_planner::RRTKDPlanner,
+    custom_planner::RRTStarPlanner,
     nav_core::BaseGlobalPlanner
 )
 
@@ -22,7 +22,7 @@ void RRTKDPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costma
         height_ = costmap_->getSizeInCellsY();
         width_ = costmap_->getSizeInCellsX();
 
-        ROS_INFO("Initialized RRT* planner[kd Tree version] with map of size %d * %d", height_, width_);
+        ROS_INFO("Initialized RRT* planner with map of size %d * %d", height_, width_);
     } else {
         ROS_WARN("This node has already been initialized...");
     }
