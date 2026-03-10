@@ -75,11 +75,7 @@ bool RRTStarPlanner::makePlan(
 
     for (int iters = 0; iters < max_iters; iters++) {
         unsigned int rand_index;
-        if (rand01(rng) < goal_bias) {
-            rand_index = goal_index;
-        } else {
-            rand_index = uniform_dist(rng);
-        }
+        rand_index = (rand01(rng) < goal_bias) ? goal_index : uniform_dist(rng);
 
         // Steer
         point rand_pt = { (int)(rand_index % width_), (int)(rand_index / width_) };
@@ -93,10 +89,12 @@ bool RRTStarPlanner::makePlan(
         point new_pt = { (int)(new_index % width_), (int)(new_index / width_) };
         std::vector<point> neighbors = tree.radius_search(new_pt, search_radius);
 
-        // 1. RRT* Choose Best Parent
+        // Choose the best parent
         unsigned int best_parent = near_index;
         double min_cost = costs[near_index] + distance(near_index % width_, near_index / width_, new_index % width_, new_index / width_);
 
+        // Iterate through all the neighbours inside the search radius
+        // And select the parent that minimizes cost to the node
         for (const auto& n_pt : neighbors) {
             unsigned int n_idx = costmap_->getIndex(n_pt.first, n_pt.second);
             double dist_to_new = distance(n_idx % width_, n_idx / width_, new_index % width_, new_index / width_);
@@ -113,7 +111,8 @@ bool RRTStarPlanner::makePlan(
         parents[new_index] = best_parent;
         costs[new_index] = min_cost;
         
-        // 2. RRT* Rewire
+        // Rewire the tree inside the search radius
+        // Check all nodes inside the radius if their cost can be decreased by using a path through the new node
         for (const auto& n_pt : neighbors) {
             unsigned int n_idx = costmap_->getIndex(n_pt.first, n_pt.second);
             if (n_idx == best_parent) continue; 
@@ -124,8 +123,8 @@ bool RRTStarPlanner::makePlan(
             if (rewired_cost < costs[n_idx] && !hasObstacle(new_index, n_idx)) {
                 parents[n_idx] = new_index;
                 costs[n_idx] = rewired_cost;
-                // Note: In a fully strict RRT*, you would propagate this updated 
-                // cost to all descendants of n_idx here.
+                // Modify to propagate this updated cost to all descendants of n_idx here.
+                // Currently we do not store children
             }
         }
 
@@ -150,7 +149,13 @@ bool RRTStarPlanner::makePlan(
     parents[goal_index] = best_goal_parent;
     plan.clear();
     unsigned int curr = goal_index;
+
+    // For debugging
+    uint cnt = 0;
     while (true) {
+        cnt++;
+        if (cnt % 100000 == 0) ROS_INFO("Looped %u time\tcurr: %u, par: %u", cnt, curr, parents[curr]);
+
         unsigned int cx = curr % width_, cy = curr / width_;
         double wx, wy;
         costmap_->mapToWorld(cx, cy, wx, wy);
@@ -161,6 +166,7 @@ bool RRTStarPlanner::makePlan(
         plan.push_back(p);
         
         if (curr == (unsigned int)start_index) break;
+
         curr = parents[curr];
     }
     std::reverse(plan.begin(), plan.end());
