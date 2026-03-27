@@ -8,29 +8,77 @@
 #include <nav_core/base_global_planner.h>
 #include <nav_msgs/Path.h>
 
+#include <custom_nav/kd_tree_x.h>
+
 #include <vector>
-#include <unordered_set>
-#include <unordered_map>
+#include <set>
 #include <random>
+#include <limits>
 
 namespace custom_planner {
 
+/**
+ * Structure to store the information needed for the RRTx algorithm
+ */
 struct Node {
     double x, y;
-    unsigned int par_idx;
+    std::size_t par_idx;
 
     double g;       // Current estimate of cost-to-goal
     double lmc;     // Look ahead cost-to-goal
 
-    std::unordered_set<Node> nbr_init_in, nbr_init_out;            // Initial neighbors
-    std::unordered_set<Node> nbr_running_in, nbr_running_out;      // Neighbors within r(|V|)
-    std::unordered_set<Node> children;
+    // We are using unsigned int for storing index of the nodes
+    // Using only one container for in and out as graph will be symmetric
+    std::vector<std::size_t> nbr_init;                              // Initial neighbors
+    std::vector<std::size_t> nbr_running;                           // Neighbors within r(|V|)
+    std::vector<std::size_t> children;
+
+    bool in_queue;  // Indicates if it is in the priority queue
+
+    // To indicate invalid index
+    static constexpr std::size_t INVALID_IDX = std::numeric_limits<std::size_t>::max();
+
+    // Constructors
+    // Default
+    Node()
+        : x(0.0), y(0.0), par_idx(INVALID_IDX),
+          g(std::numeric_limits<double>::infinity()),
+          lmc(std::numeric_limits<double>::infinity()),
+          in_queue(false) {}
+    
+    Node(double start_x, double start_y) 
+        : x(start_x), y(start_y), par_idx(INVALID_IDX), 
+          g(std::numeric_limits<double>::infinity()), 
+          lmc(std::numeric_limits<double>::infinity()), 
+          in_queue(false) {}
+}
+
+struct QKey {
+    double k1, k2;
+    std::size_t index;
+
+    bool operator<(const QKey& other) const {
+        if (k1 != other.k1) return k1 < other.k1;
+        if (k2 != other.k2) return k2 < other.k2;
+        return index < other.index;
+    }
 }
 
 class RRTXPlanner : public nav_core::BaseGlobalPlanner
 {
     public:
-        RRTXPlanner() : costmap_(nullptr), initialized_(false), root =  {}
+        RRTXPlanner::RRTXPlanner() 
+        : costmap_(nullptr), initialized_(false), planned_(false),
+        height_(0), width_(0),
+        rad_const_(10.0),
+        step_length_(0.5),       // Default edge length
+        goal_tolerance_(0.2),    // Default tolerance to reach goal
+        epsilon_(0.1),           // Default epsilon for collision checking/math
+        max_iters_(10000),       // Default maximum iterations before giving up
+        rng{dev()},              // Initialize the random number genera with the random device
+        rand01{0.0, 1.0}         // Initialize the distribution
+        {}
+
         void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
         bool makePlan(
             const geometry_msgs::PoseStamped& start,
@@ -39,32 +87,43 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         );
         bool hasObstacle(unsigned int start, unsigned int end);
         unsigned int steer(unsigned int, unsigned int, double);
+        double getRadius();
 
     private:
         costmap_2d::Costmap2D* costmap_;
         bool initialized_;
         bool planned_;
-        int height_, width_;
+        unsigned int height_, width_;
+        double origin_x, origin_y;
+        double radius_;                         // The radius for neighborhood search
+
+        Point<double, 2> goal_, start_;
+
+        std::size_t start_proxy;
 
         // Tree and node containers
-        struct Node root;                   // Indicates the root of the tree which is the goal
-        std::vector<struct Node> nodes_;    // Stores all the nodes
-        std::unordered_set<> orphan_set;    // All the nodes which are cut-off from the main  tra
+        std::vector<struct Node> nodes_;        // Stores all the nodes 
+        std::vector<std:size_t> orphan_set_;    // All the nodes which are cut-off from the main  tra
 
         // Hyperparams
         double rad_const_;                  // Constant used in radius
         double step_length_;                // Edge length of a tree edge
         double goal_tolerance_;
-        double epsilon_;
+        double epsilon_;                    // Constant used in consistency check
         unsigned int max_iters_;
+        double start_dist_threshold_;
 
         // Ranom number generators
         std::random_device dev;
-        std::mt19937 rng(dev());
-        std::uniform_real_distribution<> rand01(0.0, 1.0);
+        std::mt19937 rng{dev()};
+        std::uniform_real_distribution<double> rand01{0.0, 1.0};
 
-        // Map to map points to nodes
-        std::unordered_map<Point>
+        // Global containers
+        kdTree<double, 2> kd_tree;
+
+        // Containers for keeping track of 
+        std::set<QKey> queue_;
+        std::unordered_map<std::size_t, QKey> queueMap_;
 };
 
 } // namespace custom_planner

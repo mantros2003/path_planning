@@ -1,6 +1,4 @@
-#include <random>
-#include <chrono>
-#include <limits>
+
 #include <custom_nav/kd_tree.h>
 
 /**
@@ -10,7 +8,7 @@
 template <typename T, std::size_t D>
 void kdTree<T, D>::insert(Point<T, D> p) {
     if (root == -1) {
-        nodes.push_back(kdTreeNode{p, -1, -1});
+        nodes.push_back(kdTreeNode<T, D>{p, -1, -1});
         root = 0;
     }
 
@@ -58,7 +56,7 @@ void kdTree<T, D>::_insert(int root, Point<T, D> p, uint depth) {
 
     // Case when that sub-tree is empty
     if (next_idx == -1) {
-        nodes.emplace_back(kdTreeNode(p));
+        nodes.emplace_back(kdTreeNode<T, D>(p));
         int new_node_idx = nodes.size() - 1;
         if (left) nodes[root].left = new_node_idx;
         else nodes[root].right = new_node_idx;
