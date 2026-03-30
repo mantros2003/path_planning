@@ -193,4 +193,10 @@ void kdTree<T, D>::_radius_search(int node_idx, Point<T, D> p, double sq_radius,
     if ((diff * diff) <= sq_radius) _radius_search(far, p, sq_radius, depth + 1, result);
 }
 
+template <typename T, std::size_t D>
+void kdTree<T, D>::clear() {
+    nodes.clear();
+    root = -1;
+}
+
 #endif // KD_TREE_H

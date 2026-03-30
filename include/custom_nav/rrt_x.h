@@ -12,6 +12,8 @@
 
 #include <vector>
 #include <set>
+#include <unordered_map>
+#include <unordered_set>
 #include <random>
 #include <limits>
 
@@ -31,6 +33,7 @@ struct Node {
     // Using only one container for in and out as graph will be symmetric
     std::vector<std::size_t> nbr_init;                              // Initial neighbors
     std::vector<std::size_t> nbr_running;                           // Neighbors within r(|V|)
+    std::set<std::size_t> blocked_nbrs;                             // Neighbors to whom distance is inf
     std::vector<std::size_t> children;
 
     bool in_queue;  // Indicates if it is in the priority queue
@@ -87,23 +90,28 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         );
         bool hasObstacle(unsigned int start, unsigned int end);
         unsigned int steer(unsigned int, unsigned int, double);
-        double getRadius();
+        double getRadius() const;
+        bool isEdgeInCollision(double x0, double y0, double x1, double y1, double xmin, double ymin, double xmax, double ymax);
 
     private:
         costmap_2d::Costmap2D* costmap_;
         bool initialized_;
         bool planned_;
-        unsigned int height_, width_;
+        double height_m_, width_m_;             // Map width in meters
+        unsigned int height_c_, width_c_;       // Map width in number of cells
         double origin_x, origin_y;
+        double resolution_;                     // Sizde of each cell
         double radius_;                         // The radius for neighborhood search
+        std::vector<uint8_t> costmap_snapshot_; // Holds the last known values of the costmap
+        std::vector<unsigned int> obstacles_;   // Indices of obstacles in the costmap
 
         Point<double, 2> goal_, start_;
 
         std::size_t start_proxy;
 
         // Tree and node containers
-        std::vector<struct Node> nodes_;        // Stores all the nodes 
-        std::vector<std:size_t> orphan_set_;    // All the nodes which are cut-off from the main  tra
+        std::vector<struct Node> nodes_;                    // Stores all the nodes 
+        std::unordered_set<std::size_t> orphan_set_;        // All the nodes which are cut-off from the main  tra
 
         // Hyperparams
         double rad_const_;                  // Constant used in radius
