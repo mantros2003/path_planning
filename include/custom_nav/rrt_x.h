@@ -54,7 +54,7 @@ struct Node {
           g(std::numeric_limits<double>::infinity()), 
           lmc(std::numeric_limits<double>::infinity()), 
           in_queue(false) {}
-}
+};
 
 struct QKey {
     double k1, k2;
@@ -65,14 +65,14 @@ struct QKey {
         if (k2 != other.k2) return k2 < other.k2;
         return index < other.index;
     }
-}
+};
 
 class RRTXPlanner : public nav_core::BaseGlobalPlanner
 {
     public:
-        RRTXPlanner::RRTXPlanner() 
+        RRTXPlanner() 
         : costmap_(nullptr), initialized_(false), planned_(false),
-        height_(0), width_(0),
+        height_m_(0), width_m_(0), height_c_(0), width_c_(0),
         rad_const_(10.0),
         step_length_(0.5),       // Default edge length
         goal_tolerance_(0.2),    // Default tolerance to reach goal

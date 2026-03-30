@@ -30,7 +30,7 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         origin_y = costmap_->getOriginY();
         resolution_ = costmap_->getResolution();
 
-        ROS_INFO("Initialized RRTX planner with map of size %d * %d", height_m_, width_m_);
+        ROS_INFO("Initialized RRTX planner with map of size %f * %f", height_m_, width_m_);
     } else {
         ROS_WARN("This node has already been initialized...");
     }
@@ -57,7 +57,7 @@ bool RRTXPlanner::makePlan(
     double gy = goal.pose.position.y;
 
     
-    ROS_INFO("Start position: (%f, %f), Goal position: (%f, %f)", start_index, goal_index);
+    ROS_INFO("Start position: (%f, %f), Goal position: (%f, %f)", sx, sy, gx, gy);
     
     // Check if the goal has changed and we need a new tree
     if (isNewGoal(gx, gy)) {

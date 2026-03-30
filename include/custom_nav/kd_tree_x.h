@@ -71,6 +71,7 @@ public:
     void insert(Point<T, D> p, std::size_t index);
     std::size_t nearest(Point<T, D> p);
     std::vector<std::size_t> radius_search(Point<T, D> p, double radius);
+    void clear();
 
 private:
     int root;

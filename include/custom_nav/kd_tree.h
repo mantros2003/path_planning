@@ -4,9 +4,6 @@
 #include <vector>
 #include <cmath>
 #include <utility>
-#include <random>
-#include <chrono>
-#include <limits>
 
 inline double squared_dist(int x1, int y1, int x2, int y2) {
     long long dx = (long long)x1 - x2;
@@ -18,175 +15,29 @@ inline double distance(int x1, int y1, int x2, int y2) {
     return std::sqrt(squared_dist(x1, y1, x2, y2));
 }
 
-// Made point into a generic struct with flexible dimensionality
-// Point has D elements of type T
-template <typename T, std::size_t D>
-struct Point {
-    // Array to hold D coordinates of type T
-    std::array<T, D> coords;
+typedef unsigned int uint;
+typedef std::pair<int, int> point;
 
-    // Default constructor, initializes all dimensions to 0
-    Point() { coords.fill(0); }
-
-    // Constructor for initializer list: Point<double, 3> p({1.0, 2.0, 3.0});
-    Point(std::initializer_list<T> list) {
-        std::copy_n(list.begin(), std::min(list.size(), D), coords.begin());
-    }
-
-    // Access operator for intuitive use: p[0] instead of p.coords[0]
-    T& operator[](std::size_t index) { return coords[index]; }
-    const T& operator[](std::size_t index) const { return coords[index]; }
-
-    double distanceSquared(const Point& other) const {
-        double dist = 0;
-        for (std::size_t i = 0; i < D; ++i) {
-            double diff = static_cast<double>(coords[i]) - static_cast<double>(other.coords[i]);
-            dist += diff * diff;
-        }
-        return dist;
-    }
-
-    double distance(const Point& other) const {
-        return std::sqrt(distanceSquared(other));
-    }
-};
-
-template <typename T, std::size_t D>
 struct kdTreeNode {
-    Point<T, D> p;
+    point p;
     int left, right;
-
-    kdTreeNode(Point<T, D> pt) : p(pt), left(-1), right(-1) {}
 };
 
-template <typename T, std::size_t D>
 class kdTree {
 public:
-    kdTree() : root(-1) {}
+    kdTree() : root(-1), nodes{} {}
 
-    void insert(Point<T, D> p);
-    Point<T, D> nearest(Point<T, D> p);
-    std::vector<Point<T, D>> radius_search(Point<T, D> p, double radius);
+    void insert(point p);
+    point nearest(point p);
+    std::vector<point> radius_search(point p, double radius);
 
 private:
     int root;
-    std::vector<kdTreeNode<T, D>> nodes;
+    std::vector<kdTreeNode> nodes;
 
-    // Helper functions use unsigned int for depth tracking
-    void _insert(int node_idx, Point<T, D> p, std::size_t depth);
-    void _nearest(int node_idx, Point<T, D> p, std::size_t depth, int& best_idx, double& min_dist_sq);
-    void _radius_search(int node_idx, Point<T, D> p, double sq_radius, std::size_t depth, std::vector<Point<T, D>>& result);
+    void _insert(int root, point p, uint depth);
+    void _nearest(int, point, uint, int&, double&);
+    void _radius_search(int node_idx, point p, double sq_radius, uint depth, std::vector<point>& result);
 };
-
-/**
- * Insert point in the tree preserving the structure
- * Internally calls the recursive insert function
- */
-template <typename T, std::size_t D>
-void kdTree<T, D>::insert(Point<T, D> p) {
-    if (root == -1 || nodes.size() == 0) {
-        nodes.clear();
-        nodes.emplace_back(p);
-        root = 0;
-    }
-
-    else return _insert(root, p, 0);
-}
-
-/**
- * Returns the point nearest to the point p
- * If no point found, returns a special point
- */
-template <typename T, std::size_t D>
-Point<T, D> kdTree<T, D>::nearest(Point<T, D> p) {
-    Point<T, D> point_not_found;
-    for(size_t i = 0; i < D; ++i) point_not_found[i] = std::numeric_limits<T>::max();
-
-    if (root == -1) return point_not_found;
-
-    int best_node = -1;
-    double min_dist = std::numeric_limits<double>::max();
-
-    _nearest(root, p, 0, best_node, min_dist);
-    
-    return (best_node == -1) ? point_not_found : nodes[best_node].p;
-}
-
-/**
- * Returns all the points that are within raius of p
- */
-template <typename T, std::size_t D>
-std::vector<Point<T, D>> kdTree<T, D>::radius_search(Point<T, D> p, double radius) {
-    std::vector<Point<T, D>> result;
-    if (root != -1) {
-        _radius_search(root, p, radius * radius, 0, result);
-    }
-    return result;
-}
-
-// Internal recursive insert function
-template <typename T, std::size_t D>
-void kdTree<T, D>::_insert(int root, Point<T, D> p, std::size_t depth) {
-    std::size_t axis = depth % D;
-
-    bool left = p[axis] < nodes[root].p[axis];
-    int next_idx = (left) ? nodes[root].left : nodes[root].right;
-
-    // Case when that sub-tree is empty
-    if (next_idx == -1) {
-        // emplace_back only needs the arguments needed by constructors
-        nodes.emplace_back(p);
-        int new_node_idx = nodes.size() - 1;
-        if (left) nodes[root].left = new_node_idx;
-        else nodes[root].right = new_node_idx;
-    }
-    // When there is atleast one element in the sub-tree
-    else return _insert(next_idx, p, depth + 1);
-}
-
-// Internal recursive nns function
-template <typename T, std::size_t D>
-void kdTree<T, D>::_nearest(int root, Point<T, D> p, std::size_t depth, int& best_node, double& min_dist) {
-    if (root == -1) return;
-
-    // double d = squared_dist(nodes[root].p[0], nodes[root].p[1],
-    //                         p[0], p[1]);
-    double d = nodes[root].p.distanceSquared(p);
-    // Update the min distance and best point
-    if (d < min_dist) {
-        min_dist = d;
-        best_node = root;
-    }
-
-    // Determine the partition that contains the point
-    double diff = (depth % 2 == 0) ? p[0] - nodes[root].p[0] : p[1] - nodes[root].p[1];
-    int near = (diff < 0) ? nodes[root].left : nodes[root].right;
-    int far = (diff < 0) ? nodes[root].right : nodes[root].left;
-
-    // Search the partition that contains the point
-    _nearest(near, p, depth + 1, best_node, min_dist);
-
-    // Only check the other side if there is a chance that a better point exists on the other side
-    if ((diff * diff) < min_dist) _nearest(far, p, depth + 1, best_node, min_dist);
-}
-
-// Internal recursive radius search
-template <typename T, std::size_t D>
-void kdTree<T, D>::_radius_search(int node_idx, Point<T, D> p, double sq_radius, std::size_t depth, std::vector<Point<T, D>>& result) {
-    if (node_idx == -1) return;
-
-    double d_sq = nodes[node_idx].p.distanceSquared(p);
-
-    if (d_sq <= sq_radius) result.push_back(nodes[node_idx].p);
-
-    std::size_t axis = depth % D;
-    double diff = static_cast<double>(p[axis]) - static_cast<double>(nodes[node_idx].p[axis]);
-    int near = (diff < 0) ? nodes[node_idx].left : nodes[node_idx].right;
-    int far = (diff < 0) ? nodes[node_idx].right : nodes[node_idx].left;
-
-    _radius_search(near, p, sq_radius, depth + 1, result);
-
-    if ((diff * diff) <= sq_radius) _radius_search(far, p, sq_radius, depth + 1, result);
-}
 
 #endif // KD_TREE_H
