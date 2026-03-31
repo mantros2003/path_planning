@@ -30,9 +30,9 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         origin_y = costmap_->getOriginY();
         resolution_ = costmap_->getResolution();
 
-        ROS_INFO("Initialized RRTX planner with map of size %f * %f", height_m_, width_m_);
+        ROS_INFO("[RRTXPlanner] Initialized RRTX planner with map of size %fm * %fm", height_m_, width_m_);
     } else {
-        ROS_WARN("This node has already been initialized...");
+        ROS_WARN("[RRTXPlanner] This node has already been initialized...");
     }
 }
 
@@ -43,11 +43,11 @@ bool RRTXPlanner::makePlan(
     std::vector<geometry_msgs::PoseStamped>& plan
 ) {
     if (!initialized_) {
-        ROS_ERROR("RRTXPlanner has not been initialized");
+        ROS_ERROR("[RRTXPlanner] RRTXPlanner has not been initialized");
         return false;
     }
 
-    ROS_INFO("Making path using RRTX");
+    ROS_INFO("[RRTXPlanner] Making path using RRTX");
 
     ros::Time start_time = ros::Time::now();
 
@@ -57,10 +57,11 @@ bool RRTXPlanner::makePlan(
     double gy = goal.pose.position.y;
 
     
-    ROS_INFO("Start position: (%f, %f), Goal position: (%f, %f)", sx, sy, gx, gy);
+    ROS_INFO("[RRTXPlanner] Start position: (%f, %f), Goal position: (%f, %f)", sx, sy, gx, gy);
     
     // Check if the goal has changed and we need a new tree
     if (isNewGoal(gx, gy)) {
+        ROS_INFO("[RRTXPlanner] Got a new goal, cleaning old containers");
         resetTree();
         
         Node root_node(goal.pose.position.x, goal.pose.position.y);
@@ -84,13 +85,13 @@ bool RRTXPlanner::makePlan(
     // Grow or refine the tree
     // Sample, find nearest, grow tree
     int iters = 0;
-    while (!isConnected(sx, sy) && iters < max_iters_) {
+    while ((!isConnected(sx, sy) && iters < max_iters_) || iters < 1) {
         double x = origin_x + (rand01(rng) * width_m_);
         double y = origin_y + (rand01(rng) * height_m_);
 
         unsigned int mx, my;
         if (!costmap_->worldToMap(x, y, mx, my)) continue;
-        if (costmap_->getCost(mx, my) >= 254) continue;
+        if (costmap_->getCost(mx, my) >= obstacle_cost_threshold_) continue;
 
         Point<double, 2> random_pt({x, y});
 
@@ -103,7 +104,7 @@ bool RRTXPlanner::makePlan(
         Point<double, 2> new_pt = steer(near_pt[0], near_pt[1], random_pt[0], random_pt[1]);
 
         if (!costmap_->worldToMap(new_pt[0], new_pt[1], mx, my)) continue;
-        if (costmap_->getCost(mx, my) >= 254) continue;
+        if (costmap_->getCost(mx, my) >= obstacle_cost_threshold_) continue;
         
         // Check if the path is free of obstacles
         if (hasObstacle(near_pt, new_pt)) continue;
@@ -161,8 +162,10 @@ bool RRTXPlanner::makePlan(
         iters++;
     }
 
+    ROS_INFO("[RRTXPlanner] Our graph has %zu nodes", nodes_.size());
+
     if (!isConnected(sx, sy)) {
-        ROS_WARN("RRTXPlanner: Failed to find a path to the goal within max iterations.");
+        ROS_WARN("[RRTXPlanner] RRTXPlanner: Failed to find a path to the goal within max iterations.");
         return false;
     }
 
@@ -173,7 +176,7 @@ bool RRTXPlanner::makePlan(
     std::size_t current_idx = findStartProxy();
     
     if (current_idx == Node::INVALID_IDX) {
-        ROS_ERROR("RRTXPlanner: Start proxy is invalid despite tree being connected.");
+        ROS_ERROR("[RRTXPlanner] RRTXPlanner: Start proxy is invalid despite tree being connected.");
         return false;
     }
 
@@ -211,7 +214,7 @@ bool RRTXPlanner::makePlan(
         // For safety
         loop_safety_counter++;
         if (loop_safety_counter > nodes_.size()) {
-            ROS_ERROR("RRTXPlanner: Infinite loop detected in tree topology during path extraction!");
+            ROS_ERROR("[RRTXPlanner] Infinite loop detected in tree topology during path extraction!");
             plan.clear();
             return false;
         }
@@ -221,7 +224,7 @@ bool RRTXPlanner::makePlan(
     plan.push_back(goal);
 
     planned_ = true;
-    ROS_INFO("RRTXPlanner: Successfully extracted path with %zu waypoints.", plan.size());
+    ROS_INFO("[RRTXPlanner] Successfully extracted path with %zu waypoints.", plan.size());
     
     return true;
 }
@@ -402,12 +405,15 @@ void RRTXPlanner::updateObstacles() {
 
     // Diff with the old snapshot
     for (unsigned int i = 0; i < N; i++) {
-        bool was_obs = (costmap_snapshot_[i] >= 254);
-        bool is_obs = (live[i] >= 254);
+        bool was_obs = (costmap_snapshot_[i] >= obstacle_cost_threshold_);
+        bool is_obs = (live[i] >= obstacle_cost_threshold_);
 
         if (!was_obs && is_obs) newly_blocked.push_back(i);
         if (was_obs && !is_obs) newly_cleared.push_back(i);
     }
+
+    ROS_INFO("[RRTXPlanner] Obstacles added: %zu", newly_blocked.size());
+    ROS_INFO("[RRTXPlanner] Obstacles removed: %zu", newly_cleared.size());
 
     // Store the new data
     std::memcpy(costmap_snapshot_.data(), live, N);
