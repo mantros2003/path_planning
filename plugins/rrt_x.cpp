@@ -394,7 +394,7 @@ void RRTXPlanner::removeObstacle(unsigned int i) {
 
             // Verify the edge is clear against ALL remaining obstacles
             // Note: Replace hasObstacle with your global collision function if named differently
-            if (!hasObstacle(v.x, v.y, u.x, u.y)) {
+            if (!hasObstacle(Point<double, 2>({v.x, v.y}), Point<double, 2>({u.x, u.y}))) {
                 v.blocked_nbrs.erase(u_idx);
                 u.blocked_nbrs.erase(v_idx);
 
@@ -517,7 +517,7 @@ bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
     return false;
 }
 
-bool hasObstacle(Point<double, 2> p1, Point<double, 2> p2) {
+bool RRTXPlanner::hasObstacle(Point<double, 2> p1, Point<double, 2> p2) {
     unsigned int start, end;
     unsigned int mx, my;
 
