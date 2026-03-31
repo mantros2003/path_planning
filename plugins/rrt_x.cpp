@@ -217,8 +217,13 @@ bool RRTXPlanner::makePlan(
         // For safety
         loop_safety_counter++;
         if (loop_safety_counter > nodes_.size()) {
-            ROS_ERROR("[RRTXPlanner] Infinite loop detected in tree topology during path extraction!");
+            ROS_ERROR("[RRTXPlanner] Infinite loop detected during path extraction");
             plan.clear();
+            for (int i = 0; i < 5; i++) {
+                const Node& curr_node = nodes_[current_idx];
+                ROS_ERROR("%u", current_idx);
+                current_idx = curr_node.par_idx;
+            }
             return false;
         }
     }
