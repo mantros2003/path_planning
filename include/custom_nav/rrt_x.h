@@ -89,7 +89,6 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
             std::vector<geometry_msgs::PoseStamped>& plan
         );
         bool hasObstacle(unsigned int start, unsigned int end);
-        unsigned int steer(unsigned int, unsigned int, double);
         double getRadius() const;
         bool isEdgeInCollision(double x0, double y0, double x1, double y1, double xmin, double ymin, double xmax, double ymax);
 
@@ -132,6 +131,31 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         // Containers for keeping track of 
         std::set<QKey> queue_;
         std::unordered_map<std::size_t, QKey> queueMap_;
+
+        // Functions
+        void reduceInconsistency();
+        void rewireNeighbors(std::size_t);
+        void cullNeighbors(std::size_t);
+        void updateLMC(std::size_t);
+        void updateObstacles();
+        void removeObstacle(unsigned int);
+        void addObstacle(unsigned int);
+        Point<double, 2> steer(double, double, double, double);
+        bool isNewGoal(double, double);
+        void resetTree();
+        bool isConnected(double, double);
+        bool hasObstacle(unsigned int, unsigned int);
+        double getRadius() const;
+        std::size_t findStartProxy();
+        void propogateDescendents();
+        void verifyOrphan(std::size_t);
+        void verifyQueue(std::size_t);
+        QKey makeKey(std::size_t);
+        bool keyLess(const QKey&, const QKey&) const;
+        bool isEdgeInCollision(double, double, double, double, 
+                       double, double, double, double);
+        double squaredDistance(const std::size_t, const std::size_t) const;
+        double distance(const std::size_t, const std::size_t) const;
 };
 
 } // namespace custom_planner

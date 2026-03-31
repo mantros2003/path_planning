@@ -348,24 +348,70 @@ void RRTXPlanner::updateObstacles() {
 
     // Handle removed obstacles
     if (!newly_cleared.empty()) {
-        for (unsigned int i: newly_cleared) removeObstacles(i);
+        for (unsigned int i: newly_cleared) removeObstacle(i);
         reduceInconsistency();
     }
 
     // Handle added obstacles
     if (!newly_blocked.empty()) {
-        for (unsigned int i: newly_blocked) addObstacles(i);
+        for (unsigned int i: newly_blocked) addObstacle(i);
         propogateDescendents();
         verifyQueue();
         reduceInconsistency();
     }
 }
 
-void RRTXPlanner::removeObstacles(unsigned int i) {
-    ;
+void RRTXPlanner::removeObstacle(unsigned int i) {
+    // Remove from global tracking
+    auto it = std::find(obstacles_.begin(), obstacles_.end(), i);
+    if (it != obstacles_.end()) {
+        *it = obstacles_.back();
+        obstacles_.pop_back();
+    }
+
+    // Map back to world coordinates
+    unsigned int obstacle_x = i % width_c_;
+    unsigned int obstacle_y = i / width_c_;
+    double center_x = origin_x + (obstacle_x + 0.5) * resolution_;
+    double center_y = origin_y + (obstacle_y + 0.5) * resolution_;
+
+    // KD Tree query
+    std::vector<std::size_t> affected_nodes = kd_tree.radius_search(
+        Point<double, 2>({center_x, center_y}), step_length_ + resolution_);
+
+    // Restoration cascade
+    for (std::size_t v_idx : affected_nodes) {
+        Node& v = nodes_[v_idx];
+
+        // Copy set to allow safe erasure during iteration
+        std::vector<std::size_t> neighbors_to_check(v.blocked_nbrs.begin(), v.blocked_nbrs.end());
+
+        for (std::size_t u_idx : neighbors_to_check) {
+            if (v_idx > u_idx) continue;
+
+            Node& u = nodes_[u_idx];
+
+            // Verify the edge is clear against ALL remaining obstacles
+            // Note: Replace hasObstacle with your global collision function if named differently
+            if (!hasObstacle(v_idx, u_idx)) {
+                v.blocked_nbrs.erase(u_idx);
+                u.blocked_nbrs.erase(v_idx);
+
+                updateLMC(v_idx);
+                updateLMC(u_idx);
+
+                if (std::abs(v.lmc - v.g) > epsilon_) {
+                    verifyQueue(v_idx);
+                }
+                if (std::abs(u.lmc - u.g) > epsilon_) {
+                    verifyQueue(u_idx);
+                }
+            }
+        }
+    }
 }
 
-void RRTXPlanner::addObstacles(unsigned int i) {
+void RRTXPlanner::addObstacle(unsigned int i) {
     obstacles_.push_back(i);
 
     unsigned int obstacle_x = i % width_c_;
