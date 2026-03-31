@@ -67,6 +67,7 @@ bool RRTXPlanner::makePlan(
         root_node.g = 0.0;     // Goal cost is 0
         root_node.lmc = 0.0;
         nodes_.push_back(root_node);
+        kd_tree.insert(Point<double, 2>({root_node.x, root_node.y}), 0);
         // Add to kd tree
     }
     
@@ -159,6 +160,70 @@ bool RRTXPlanner::makePlan(
 
         iters++;
     }
+
+    if (!isConnected(sx, sy)) {
+        ROS_WARN("RRTXPlanner: Failed to find a path to the goal within max iterations.");
+        return false;
+    }
+
+    // Clear any old path data
+    plan.clear();
+
+    // Find the node closest to our current start position to begin tracing
+    std::size_t current_idx = findStartProxy();
+    
+    if (current_idx == Node::INVALID_IDX) {
+        ROS_ERROR("RRTXPlanner: Start proxy is invalid despite tree being connected.");
+        return false;
+    }
+
+    // Add the exact starting pose so the local planner has a smooth beginning
+    plan.push_back(start);
+
+    // Trace the tree from the start proxy up to the goal root
+    std::size_t loop_safety_counter = 0;
+    
+    while (current_idx != Node::INVALID_IDX) {
+        const Node& curr_node = nodes_[current_idx];
+
+        geometry_msgs::PoseStamped pose;
+        pose.header.stamp = start_time;
+        pose.header.frame_id = start.header.frame_id; // Keep consistent with move_base frames
+        pose.pose.position.x = curr_node.x;
+        pose.pose.position.y = curr_node.y;
+        pose.pose.position.z = 0.0;
+        
+        pose.pose.orientation.w = 1.0; 
+        pose.pose.orientation.x = 0.0;
+        pose.pose.orientation.y = 0.0;
+        pose.pose.orientation.z = 0.0;
+
+        plan.push_back(pose);
+
+        // Break if we reached the goal node (where cost is 0)
+        if (curr_node.g == 0.0) {
+            break;
+        }
+
+        // Move to the parent node
+        current_idx = curr_node.par_idx;
+
+        // For safety
+        loop_safety_counter++;
+        if (loop_safety_counter > nodes_.size()) {
+            ROS_ERROR("RRTXPlanner: Infinite loop detected in tree topology during path extraction!");
+            plan.clear();
+            return false;
+        }
+    }
+
+    // Add the exact goal pose for precise final positioning
+    plan.push_back(goal);
+
+    planned_ = true;
+    ROS_INFO("RRTXPlanner: Successfully extracted path with %zu waypoints.", plan.size());
+    
+    return true;
 }
 
 void RRTXPlanner::reduceInconsistency() {
