@@ -516,7 +516,7 @@ Point<double, 2> RRTXPlanner::steer(double near_x, double near_y, double rand_x,
 
     double dx = rand_x - near_x;
     double dy = rand_y - near_y;
-    double len = distance(near_x, near_y, rand_x, rand_y);
+    double len = ::distance(near_x, near_y, rand_x, rand_y);
 
     if (len <= step_length_) return Point<double, 2>({rand_x, rand_y});
 
