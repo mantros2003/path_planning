@@ -99,7 +99,7 @@ bool RRTXPlanner::makePlan(
         Point<double, 2> near_pt({near_node.x, near_node.y});
 
         // Move in the direction of the random point from the near point
-        Point<double, 2> new_pt = steer(near_pt, random_pt);
+        Point<double, 2> new_pt = steer(near_pt.x, near_pt.y, random_pt.x, random_pt.y);
 
         if (!costmap_->worldToMap(new_pt[0], new_pt[1], mx, my)) continue;
         if (costmap_->getCost(mx, my) >= 254) continue;
