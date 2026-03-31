@@ -142,7 +142,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         void resetTree();
         bool isConnected(double, double);
         bool hasObstacle(unsigned int, unsigned int);
-        bool hasObstacle(Point<double, 2>, Point<double, 2>)
+        bool hasObstacle(Point<double, 2>, Point<double, 2>);
         double getRadius() const;
         std::size_t findStartProxy();
         void propogateDescendents();

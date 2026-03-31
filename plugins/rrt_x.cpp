@@ -99,7 +99,7 @@ bool RRTXPlanner::makePlan(
         Point<double, 2> near_pt({near_node.x, near_node.y});
 
         // Move in the direction of the random point from the near point
-        Point<double, 2> new_pt = steer(near_pt.x, near_pt.y, random_pt.x, random_pt.y);
+        Point<double, 2> new_pt = steer(near_pt[0], near_pt[1], random_pt[0], random_pt[1]);
 
         if (!costmap_->worldToMap(new_pt[0], new_pt[1], mx, my)) continue;
         if (costmap_->getCost(mx, my) >= 254) continue;
@@ -518,7 +518,16 @@ bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
 }
 
 bool hasObstacle(Point<double, 2> p1, Point<double, 2> p2) {
-    return hasObstacle(p1.x, p1.y, p2.x, p2.y);
+    unsigned int start, end;
+    unsigned int mx, my;
+
+    if (!costmap_->worldToMap(p1[0], p1[1], mx, my)) return true;
+    start = costmap_->getIndex(mx, my);
+
+    if (!costmap_->worldToMap(p2[0], p2[1], mx, my)) return true;
+    end = costmap_->getIndex(mx, my);
+
+    return hasObstacle(start, end);
 }
 
 // NOTE: Make this function more modular and
@@ -565,7 +574,7 @@ std::size_t RRTXPlanner::findStartProxy() {
 
         // Check if we have a clear path to this neighbor
         if (!hasObstacle(start_, nbr_pt)) {
-            double dist = robot_pt.distance(nbr_pt);
+            double dist = start_proxy.distance(nbr_pt);
             if (dist < min_dist) {
                 min_dist = dist;
                 best_visible_proxy = nbr_idx;
