@@ -69,6 +69,7 @@ bool RRTXPlanner::makePlan(
         root_node.lmc = 0.0;
         nodes_.push_back(root_node);
         kd_tree.insert(Point<double, 2>({root_node.x, root_node.y}), 0);
+        planned_ = false;
         // Add to kd tree
     }
     
@@ -85,7 +86,9 @@ bool RRTXPlanner::makePlan(
     // Grow or refine the tree
     // Sample, find nearest, grow tree
     int iters = 0;
-    while ((!isConnected(sx, sy) && iters < max_iters_) || iters < 1) {
+    while ((!planned_ && iters < max_iters_) || (isConnected(sx, sy) && iters < 5))
+    // while ((!isConnected(sx, sy) && iters < max_iters_) || iters < 1)
+    {
         double x = origin_x + (rand01(rng) * width_m_);
         double y = origin_y + (rand01(rng) * height_m_);
 
@@ -165,7 +168,7 @@ bool RRTXPlanner::makePlan(
     ROS_INFO("[RRTXPlanner] Our graph has %zu nodes", nodes_.size());
 
     if (!isConnected(sx, sy)) {
-        ROS_WARN("[RRTXPlanner] RRTXPlanner: Failed to find a path to the goal within max iterations.");
+        ROS_WARN("[RRTXPlanner] Failed to find a path to the goal within max iterations.");
         return false;
     }
 
