@@ -221,7 +221,7 @@ bool RRTXPlanner::makePlan(
             plan.clear();
             for (int i = 0; i < 5; i++) {
                 const Node& curr_node = nodes_[current_idx];
-                ROS_ERROR("%u", current_idx);
+                ROS_ERROR("%lu", current_idx);
                 current_idx = curr_node.par_idx;
             }
             return false;
@@ -323,7 +323,7 @@ void RRTXPlanner::cullNeighbors(std::size_t node_idx) {
                 Node& nbr = nodes_[nbr_idx];
 
                 // If the neighbor is now outside the shrinking radius
-                if (distance(node_idx, nbr_idx) > radius_) {
+                if (::distance(node.x, node.y, nbr.x, nbr.y) > radius_) {
                     // Remove 'node_idx' from the neighbor's running list as well
                     nbr.nbr_running.erase(
                         std::remove(nbr.nbr_running.begin(), nbr.nbr_running.end(), node_idx),
@@ -357,6 +357,15 @@ void RRTXPlanner::updateLMC(std::size_t v_idx) {
         if (u_idx == v_idx || u.par_idx == v_idx) continue;
 
         Point<double, 2> u_pt({u.x, u.y});
+
+        if (orphan_set_.count(u_idx) > 0) continue;
+
+        double cost = distance(v_idx, u_idx) + u.lmc;
+
+        if (v.lmc > cost) {
+            min_cost = cost;
+            best_parent = u_idx;
+        }
 
         // Implicitly part of d_pi(v, u): Check if edge is valid
         if (!hasObstacle(v_pt, u_pt)) {
