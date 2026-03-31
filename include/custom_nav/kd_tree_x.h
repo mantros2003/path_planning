@@ -10,14 +10,14 @@
 
 template <typename T>
 inline double squared_dist(T x1, T y1, T x2, T y2) {
-    long long dx = (double)x1 - x2;
-    long long dy = (double)y1 - y2;
-    return (double)(dx * dx + dy * dy);
+    double dx = static_cast<double>(x1) - static_cast<double>(x2);
+    double dy = static_cast<double>(y1) - static_cast<double>(y2);
+    return dx * dx + dy * dy;
 }
 
 template <typename T>
 inline double distance(T x1, T y1, T x2, T y2) {
-    return std::sqrt(squared_dist<T>(x1, y1, x2, y2));
+    return std::sqrt(squared_dist(x1, y1, x2, y2));
 }
 
 // Made point into a generic struct with flexible dimensionality
