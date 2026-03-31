@@ -149,7 +149,7 @@ bool RRTXPlanner::makePlan(
         // Add to tree
         // Update the tree insert function to support adding indices
         nodes_.push_back(new_node);
-        kd_tree_.insert(new_pt, new_idx);
+        kd_tree.insert(new_pt, new_idx);
         nodes_[best_parent].children.push_back(new_idx);
 
         radius_ = getRadius();
@@ -223,8 +223,8 @@ void RRTXPlanner::rewireNeighbors(std::size_t v_index) {
             }
 
             // Link to new parent
-            nbr.par_idx = v_idx;
-            v.children.push_back(nbr_idx);
+            nbr.par_idx = v_index;
+            v.children.push_back(nbr_index);
 
             // Update lmc
             nbr.lmc = nbr_dist_via_v;
@@ -425,7 +425,7 @@ void RRTXPlanner::addObstacle(unsigned int i) {
 
     // Make the set of edges that intersect this obstacle
     // Get the points that are within step_length_ of the obstacle
-    std::vector<std::size_t> possible_invalidated_points = kd_tree.radius_search(Point<double, 2>({xmin, ymin}), step_length_ + resolution);
+    std::vector<std::size_t> possible_invalidated_points = kd_tree.radius_search(Point<double, 2>({xmin, ymin}), step_length_ + resolution_);
     for (std::size_t v_idx: possible_invalidated_points) {
         Node& v = nodes_[v_idx];
 
@@ -486,7 +486,7 @@ bool RRTXPlanner::isConnected(double sx, double sy) {
 
     Point<double, 2> start_pt({sx, sy});
 
-    std::vector<std::size_t> neighbors = kd_tree.radius_search(p, step_length_);
+    std::vector<std::size_t> neighbors = kd_tree.radius_search(start_pt, step_length_);
 
     std::size_t best_index = Node::INVALID_IDX;
     double min_distance = std::numeric_limits<double>::infinity();
@@ -510,7 +510,7 @@ bool RRTXPlanner::isConnected(double sx, double sy) {
 }
 
 bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
-    int sx = start % width_, sy = start / width_, gx = end % width_, gy = end / width_;
+    int sx = start % width_m_, sy = start / width_m_, gx = end % width_m_, gy = end / width_m_;
     for (base_local_planner::LineIterator line(sx, sy, gx, gy); line.isValid(); line.advance()) {
         if (costmap_->getCost(line.getX(), line.getY()) >= costmap_2d::LETHAL_OBSTACLE) return true;
     }
@@ -521,9 +521,9 @@ bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
 // remove the hardcoded 0.5 and add 1/dim logic
 double RRTXPlanner::getRadius() const {
     double n = static_cast<double>(nodes_.size());
-    if (n <= 1) return step_len;
+    if (n <= 1) return step_length_;
 
-    return std::min(rad_const_ * std::pow(std::log(n) / n, 0.5), step_length)
+    return std::min(rad_const_ * std::pow(std::log(n) / n, 0.5), step_length_)
 }
 
 /**
@@ -532,7 +532,7 @@ double RRTXPlanner::getRadius() const {
  */
 std::size_t RRTXPlanner::findStartProxy() {
     // Get the nearest node
-    std::size_t proxy_idx = kd_tree_.nearest(robot_pt);
+    std::size_t proxy_idx = kd_tree.nearest(start_);
     
     // If the tree is empty or invalid, return the invalid index
     if (proxy_idx == Node::INVALID_IDX || proxy_idx >= nodes_.size()) {
@@ -550,7 +550,7 @@ std::size_t RRTXPlanner::findStartProxy() {
     // We must search a local radius for the closest node that we can actually see
     // We can change search radius to a multiple of step length
     double search_radius = step_length_;
-    std::vector<std::size_t> local_neighbors = kd_tree_.radius_search(robot_pt, search_radius);
+    std::vector<std::size_t> local_neighbors = kd_tree.radius_search(robot_pt, search_radius);
 
     double min_dist = std::numeric_limits<double>::infinity();
     std::size_t best_visible_proxy = proxy_idx;
@@ -608,9 +608,9 @@ void RRTXPlanner::propogateDescendents() {
         v.g = std::numeric_limits<double>::infinity();
         v.lmc = std::numeric_limits<double>::infinity();
 
-        if (v.parent_idx != Node::INVALID_IDX) {
-            Node& parent = nodes_[v.parent_idx];
-            auto it = parent.children.find(parent.children.begin(), parent.children.end(), v_idx);
+        if (v.par_idx != Node::INVALID_IDX) {
+            Node& parent = nodes_[v.par_idx];
+            auto it = std::find(parent.children.begin(), parent.children.end(), v_idx);
             if (it != parent.children.end()) {
                 *it = parent.children.back();
                 parent.children.pop_back();
@@ -642,7 +642,7 @@ void RRTXPlanner::verifyQueue(std::size_t node_idx) {
         nodes_[node_idx].in_queue = true;
     } else {
         queue_.erase(it->second);
-        queue_insert(key);
+        queue_.insert(key);
         queueMap_[node_idx] = key;
     }
 }
