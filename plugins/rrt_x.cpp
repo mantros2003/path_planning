@@ -510,7 +510,7 @@ bool RRTXPlanner::isConnected(double sx, double sy) {
 }
 
 bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
-    int sx = start % width_m_, sy = start / width_m_, gx = end % width_m_, gy = end / width_m_;
+    int sx = start % width_c_, sy = start / width_c_, gx = end % width_c_, gy = end / width_c_;
     for (base_local_planner::LineIterator line(sx, sy, gx, gy); line.isValid(); line.advance()) {
         if (costmap_->getCost(line.getX(), line.getY()) >= costmap_2d::LETHAL_OBSTACLE) return true;
     }
@@ -523,7 +523,7 @@ double RRTXPlanner::getRadius() const {
     double n = static_cast<double>(nodes_.size());
     if (n <= 1) return step_length_;
 
-    return std::min(rad_const_ * std::pow(std::log(n) / n, 0.5), step_length_)
+    return std::min(rad_const_ * std::pow(std::log(n) / n, 0.5), step_length_);
 }
 
 /**
@@ -543,14 +543,14 @@ std::size_t RRTXPlanner::findStartProxy() {
     Point<double, 2> proxy_pt({nearest_node.x, nearest_node.y});
 
     // If there's no obstacle between the robot and this node
-    if (!hasObstacle(robot_pt, proxy_pt)) {
+    if (!hasObstacle(start_, proxy_pt)) {
         return proxy_idx;
     }
 
     // We must search a local radius for the closest node that we can actually see
     // We can change search radius to a multiple of step length
     double search_radius = step_length_;
-    std::vector<std::size_t> local_neighbors = kd_tree.radius_search(robot_pt, search_radius);
+    std::vector<std::size_t> local_neighbors = kd_tree.radius_search(start_, search_radius);
 
     double min_dist = std::numeric_limits<double>::infinity();
     std::size_t best_visible_proxy = proxy_idx;
