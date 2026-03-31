@@ -574,7 +574,7 @@ std::size_t RRTXPlanner::findStartProxy() {
 
         // Check if we have a clear path to this neighbor
         if (!hasObstacle(start_, nbr_pt)) {
-            double dist = start_proxy.distance(nbr_pt);
+            double dist = start_.distance(nbr_pt);
             if (dist < min_dist) {
                 min_dist = dist;
                 best_visible_proxy = nbr_idx;
