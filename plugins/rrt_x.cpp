@@ -83,11 +83,11 @@ bool RRTXPlanner::makePlan(
     // Grow or refine the tree
     // Sample, find nearest, grow tree
     int iters = 0;
-    while (!isConnected((sx, sy)) && iters < max_iters_) {
+    while (!isConnected(sx, sy) && iters < max_iters_) {
         double x = origin_x + (rand01(rng) * width_m_);
         double y = origin_y + (rand01(rng) * height_m_);
 
-        int mx, my;
+        unsigned int mx, my;
         if (!costmap_->worldToMap(x, y, mx, my)) continue;
         if (costmap_->getCost(mx, my) >= 254) continue;
 
@@ -96,6 +96,7 @@ bool RRTXPlanner::makePlan(
         // Get the point nearest to the ranomly selected point
         std::size_t nearest_index = kd_tree.nearest(random_pt);
         Node& near_node = nodes_[nearest_index];
+        Point<double, 2> near_pt({near_node.x, near_node.y});
 
         // Move in the direction of the random point from the near point
         Point<double, 2> new_pt = steer(near_pt, random_pt);
@@ -112,7 +113,7 @@ bool RRTXPlanner::makePlan(
 
 
         // Find neighbors within radius
-        std::vector<std::size_t> neighbors = kd_tree_.radius_search(new_pt, radius_);
+        std::vector<std::size_t> neighbors = kd_tree.radius_search(new_pt, radius_);
 
         // Find best parent
         double min_cost = near_node.g + new_pt.distance(near_pt);
@@ -185,8 +186,8 @@ void RRTXPlanner::reduceInconsistency() {
         v.in_queue = false;
 
         if (v.g - v.lmc > epsilon_) {
-            updateLMC();
-            rewireNeighbors();
+            updateLMC(v_idx);
+            rewireNeighbors(v_idx);
         }
 
         v.g = v.lmc;
@@ -205,7 +206,7 @@ void RRTXPlanner::rewireNeighbors(std::size_t v_index) {
 
     // Check all the neighbors
     for (std::size_t nbr_index: v.nbr_init) {
-        if (nbr_index == par_idx) continue;
+        if (nbr_index == v.par_idx) continue;
 
         Node& nbr = nodes_[nbr_index];
         double nbr_dist_via_v = v.lmc + distance(v_index, nbr_index);
@@ -216,19 +217,19 @@ void RRTXPlanner::rewireNeighbors(std::size_t v_index) {
             if (nbr.par_idx != Node::INVALID_IDX) {
                 Node& old_parent = nodes_[nbr.par_idx];
                 old_parent.children.erase(
-                    std::remove(old_parent.children.begin(), old_parent.children.end(), nbr_idx),
+                    std::remove(old_parent.children.begin(), old_parent.children.end(), nbr_index),
                     old_parent.children.end()
                 );
             }
 
             // Link to new parent
-            nbr.par_idx = node_idx;
-            node.children.push_back(nbr_idx);
+            nbr.par_idx = v_idx;
+            v.children.push_back(nbr_idx);
 
             // Update lmc
             nbr.lmc = nbr_dist_via_v;
 
-            if (nbr.u - nbr.lmc > epsilon_) verifyQueue(nbr_index);
+            if (nbr.g - nbr.lmc > epsilon_) verifyQueue(nbr_index);
         }
     }
 }
@@ -325,7 +326,7 @@ void RRTXPlanner::updateObstacles() {
     std::vector<unsigned int> newly_cleared;
 
     // Get the new costmap data
-    const uint8_t* live = costmap_->getChatMap();
+    const uint8_t* live = costmap_->getCharMap();
     const unsigned int N = width_c_ * height_c_;
 
     // First invocation of the function
@@ -356,7 +357,7 @@ void RRTXPlanner::updateObstacles() {
     if (!newly_blocked.empty()) {
         for (unsigned int i: newly_blocked) addObstacle(i);
         propogateDescendents();
-        verifyQueue();
+        verifyQueue(start_proxy);
         reduceInconsistency();
     }
 }

@@ -88,9 +88,6 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
             const geometry_msgs::PoseStamped& goal,
             std::vector<geometry_msgs::PoseStamped>& plan
         );
-        bool hasObstacle(unsigned int start, unsigned int end);
-        double getRadius() const;
-        bool isEdgeInCollision(double x0, double y0, double x1, double y1, double xmin, double ymin, double xmax, double ymax);
 
     private:
         costmap_2d::Costmap2D* costmap_;
