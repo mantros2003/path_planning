@@ -394,7 +394,7 @@ void RRTXPlanner::removeObstacle(unsigned int i) {
 
             // Verify the edge is clear against ALL remaining obstacles
             // Note: Replace hasObstacle with your global collision function if named differently
-            if (!hasObstacle(v_idx, u_idx)) {
+            if (!hasObstacle(v.x, v.y, u.x, u.y)) {
                 v.blocked_nbrs.erase(u_idx);
                 u.blocked_nbrs.erase(v_idx);
 
@@ -517,6 +517,10 @@ bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
     return false;
 }
 
+bool hasObstacle(Point<double, 2> p1, Point<double, 2> p2) {
+    return hasObstacle(p1.x, p1.y, p2.x, p2.y);
+}
+
 // NOTE: Make this function more modular and
 // remove the hardcoded 0.5 and add 1/dim logic
 double RRTXPlanner::getRadius() const {
@@ -560,7 +564,7 @@ std::size_t RRTXPlanner::findStartProxy() {
         Point<double, 2> nbr_pt({nbr.x, nbr.y});
 
         // Check if we have a clear path to this neighbor
-        if (!hasObstacle(robot_pt, nbr_pt)) {
+        if (!hasObstacle(start_, nbr_pt)) {
             double dist = robot_pt.distance(nbr_pt);
             if (dist < min_dist) {
                 min_dist = dist;
