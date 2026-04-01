@@ -74,7 +74,8 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         : costmap_(nullptr), initialized_(false), planned_(false),
         height_m_(0), width_m_(0), height_c_(0), width_c_(0),
         rad_const_(10.0),
-        step_length_(0.5),       // Default edge length
+        obstacle_cost_threshold_(150),
+        step_length_(0.3),       // Default edge length
         goal_tolerance_(0.2),    // Default tolerance to reach goal
         epsilon_(0.1),           // Default epsilon for collision checking/math
         max_iters_(10000),       // Default maximum iterations before giving up
@@ -110,12 +111,13 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         std::unordered_set<std::size_t> orphan_set_;        // All the nodes which are cut-off from the main  tra
 
         // Hyperparams
-        double rad_const_;                  // Constant used in radius
-        double step_length_;                // Edge length of a tree edge
+        double rad_const_;                      // Constant used in radius
+        double step_length_;                    // Edge length of a tree edge
         double goal_tolerance_;
-        double epsilon_;                    // Constant used in consistency check
+        double epsilon_;                        // Constant used in consistency check
         unsigned int max_iters_;
         double start_dist_threshold_;
+        unsigned char obstacle_cost_threshold_; // Treat all grids with cost more than this as an obstacle
 
         // Ranom number generators
         std::random_device dev;
