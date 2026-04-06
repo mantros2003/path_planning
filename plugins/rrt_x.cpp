@@ -264,6 +264,7 @@ void RRTXPlanner::reduceInconsistency() {
         auto top = queue_.begin();
         std::size_t v_idx = top->index;
         queue_.erase(top);
+        queueMap_.erase(v_idx);
 
         Node& v = nodes_[v_idx];
         v.in_queue = false;
