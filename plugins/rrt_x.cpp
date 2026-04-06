@@ -2,6 +2,7 @@
 #include <custom_nav/kd_tree_x.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/line_iterator.h>
+#include <iostream>
 #include <cstdint>
 #include <random>
 #include <cmath>
@@ -21,7 +22,6 @@ namespace custom_planner {
 void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
     if (!initialized_) {
         costmap_ = costmap_ros->getCostmap();
-        initialized_ = true;
         height_m_ = costmap_->getSizeInMetersY();
         width_m_ = costmap_->getSizeInMetersX();
         height_c_ = costmap_->getSizeInCellsY();
@@ -29,6 +29,13 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         origin_x = costmap_->getOriginX();
         origin_y = costmap_->getOriginY();
         resolution_ = costmap_->getResolution();
+
+        // Initialize the costmap snapshot
+        const unsigned int N = width_c * height_c;
+        const uint8_t *charMap = costmap_->getCharMap();
+        costmap_snapshot_.assign(charMap, charMap + N);
+
+        initialized_ = true;
 
         ROS_INFO("[RRTXPlanner] Initialized RRTX planner with map of size %fm * %fm", height_m_, width_m_);
     } else {
@@ -65,7 +72,7 @@ bool RRTXPlanner::makePlan(
         resetTree();
         
         Node root_node(goal.pose.position.x, goal.pose.position.y);
-        root_node.g = 0.0;     // Goal cost is 0
+        root_node.g = 0.0;
         root_node.lmc = 0.0;
         nodes_.push_back(root_node);
         kd_tree.insert(Point<double, 2>({root_node.x, root_node.y}), 0);
@@ -246,7 +253,7 @@ void RRTXPlanner::reduceInconsistency() {
     Node& bot = nodes_[start_proxy];
 
     // Stop when the robot's proxy is consistent 
-    // AND all cheaper nodes have been processed.
+    // And all cheaper nodes have been processed.
     while (!queue_.empty() &&
            (keyLess(topKey(), botKey)               ||
             std::abs(bot.lmc - bot.g) > epsilon_    ||
@@ -348,44 +355,29 @@ void RRTXPlanner::updateLMC(std::size_t v_idx) {
 
     Point<double, 2> v_pt({v.x, v.y});
 
-    // Line 2: forall the u in N+(v)
-    for (std::size_t u_idx : v.nbr_running) {
+    auto findBetterParent = [&] (std::size_t u_idx) {
         Node& u = nodes_[u_idx];
-        
-        // Line 2 (Constraint): p(u) != v 
-        // Prevent infinite routing loops by ensuring we don't pick our own child
-        if (u_idx == v_idx || u.par_idx == v_idx) continue;
+
+        // Prevent infinite routing loops by ensuring we dont pick our own child
+        if (u_idx == v_idx || u.par_idx == v_idx) return;
 
         Point<double, 2> u_pt({u.x, u.y});
 
-        if (orphan_set_.count(u_idx) > 0) continue;
+        if (orphan_set_.count(u_idx) > 0) return;
 
         double cost = distance(v_idx, u_idx) + u.lmc;
 
-        if (v.lmc > cost) {
-            min_cost = cost;
+        if (min_cost > cost) {
+            min_cost cost;
             best_parent = u_idx;
         }
+    };
 
-        // Implicitly part of d_pi(v, u): Check if edge is valid
-        if (!hasObstacle(v_pt, u_pt)) {
-            
-            // Line 3: d_pi(v, u) + lmc(u)
-            // CRITICAL FIX: Using u.lmc instead of u.g
-            double cost = v_pt.distance(u_pt) + u.lmc;
+    for (std::size_t u_idx: v.nbr_running) findBetterParent(u_idx);
+    for (std::size_t u_idx: v.nbr_init) findBetterParent(u_idx);
 
-            // Lines 3 & 4 logic: Track the minimum cost and best parent (p')
-            if (cost < min_cost) {
-                min_cost = cost;
-                best_parent = u_idx;
-            }
-        }
-    }
-
-    // Line 5: makeParentOf(p', v)
     // Inline implementation of breaking old ties and making the new connection
     if (v.par_idx != best_parent) {
-        
         if (v.par_idx != Node::INVALID_IDX) {
             Node& old_parent = nodes_[v.par_idx];
             old_parent.children.erase(
@@ -397,11 +389,8 @@ void RRTXPlanner::updateLMC(std::size_t v_idx) {
         if (best_parent != Node::INVALID_IDX) {
             nodes_[best_parent].children.push_back(v_idx);
         }
-
         v.par_idx = best_parent;
     }
-
-    // Update the Lookahead cost explicitly (done inside makeParentOf in the paper)
     v.lmc = min_cost;
 }
 
@@ -436,18 +425,28 @@ void RRTXPlanner::updateObstacles() {
     std::memcpy(costmap_snapshot_.data(), live, N);
 
     // Handle removed obstacles
+    std::cout << "Removing obstacles: ";
     if (!newly_cleared.empty()) {
-        for (unsigned int i: newly_cleared) removeObstacle(i);
+        for (unsigned int i: newly_cleared) {
+            removeObstacle(i);
+            std::cout << i << ' ';
+        }
         reduceInconsistency();
     }
+    std::cout << std::endl;
 
     // Handle added obstacles
+    std::cout << "Adding obstacles: ";
     if (!newly_blocked.empty()) {
-        for (unsigned int i: newly_blocked) addObstacle(i);
+        for (unsigned int i: newly_blocked) {
+            addObstacle(i);
+            std::cout << i << ' ';
+        }
         propogateDescendents();
         verifyQueue(start_proxy);
         reduceInconsistency();
     }
+    std::cout << std::endl;
 }
 
 void RRTXPlanner::removeObstacle(unsigned int i) {
@@ -475,13 +474,12 @@ void RRTXPlanner::removeObstacle(unsigned int i) {
         // Copy set to allow safe erasure during iteration
         std::vector<std::size_t> neighbors_to_check(v.blocked_nbrs.begin(), v.blocked_nbrs.end());
 
-        for (std::size_t u_idx : neighbors_to_check) {
+        for (std::size_t u_idx: neighbors_to_check) {
             if (v_idx > u_idx) continue;
 
             Node& u = nodes_[u_idx];
 
-            // Verify the edge is clear against ALL remaining obstacles
-            // Note: Replace hasObstacle with your global collision function if named differently
+            // Verify the edge is clear against all remaining obstacles
             if (!hasObstacle(Point<double, 2>({v.x, v.y}), Point<double, 2>({u.x, u.y}))) {
                 v.blocked_nbrs.erase(u_idx);
                 u.blocked_nbrs.erase(v_idx);
@@ -489,12 +487,8 @@ void RRTXPlanner::removeObstacle(unsigned int i) {
                 updateLMC(v_idx);
                 updateLMC(u_idx);
 
-                if (std::abs(v.lmc - v.g) > epsilon_) {
-                    verifyQueue(v_idx);
-                }
-                if (std::abs(u.lmc - u.g) > epsilon_) {
-                    verifyQueue(u_idx);
-                }
+                if (std::abs(v.lmc - v.g) > epsilon_) verifyQueue(v_idx);
+                if (std::abs(u.lmc - u.g) > epsilon_) verifyQueue(u_idx);
             }
         }
     }
@@ -506,6 +500,7 @@ void RRTXPlanner::addObstacle(unsigned int i) {
     unsigned int obstacle_x = i % width_c_;
     unsigned int obstacle_y = i / width_c_;
 
+    // Get the points that make the grid cell
     double xmin = origin_x + obstacle_x * resolution_;
     double ymin = origin_y + obstacle_y * resolution_;
     double xmax = xmin + resolution_;
@@ -661,12 +656,11 @@ std::size_t RRTXPlanner::findStartProxy() {
         Point<double, 2> nbr_pt({nbr.x, nbr.y});
 
         // Check if we have a clear path to this neighbor
-        if (!hasObstacle(start_, nbr_pt)) {
-            double dist = start_.distance(nbr_pt);
-            if (dist < min_dist) {
-                min_dist = dist;
-                best_visible_proxy = nbr_idx;
-            }
+        // And if we improve the previous cost
+        double dist = start_.distance(nbr_pt);
+        if (dist <= min_dist && !hasObstacle(start_, nbr_pt)) {
+            min_dist = dist;
+            best_visible_proxy = nbr_idx;
         }
     }
 
@@ -681,7 +675,7 @@ void RRTXPlanner::propogateDescendents() {
     while (head < processing_queue.size()) {
         std::size_t v_idx = processing_queue[head++];
         for (std::size_t child_idx : nodes_[v_idx].children) {
-            // std::unordered_set::insert returns a pair. .second is true if insertion took place
+            // std::unordered_set::insert returns a pair, .second is true if insertion took place
             if (orphan_set_.insert(child_idx).second) processing_queue.push_back(child_idx);
         }
     }
@@ -697,9 +691,8 @@ void RRTXPlanner::propogateDescendents() {
             }
         };
 
-        for (std::size_t u_idx : v.nbr_running) {
-            invalidate_neighbor(u_idx);
-        }
+        for (std::size_t u_idx: v.nbr_running) invalidate_neighbor(u_idx);
+        for (std::size_t u_idx: v.nbr_init) invalidate_neighbor(u_idx);
         invalidate_neighbor(v.par_idx);
     }
 
@@ -723,6 +716,10 @@ void RRTXPlanner::propogateDescendents() {
     orphan_set_.clear();
 }
 
+/**
+ * Add the node to orphan set
+ * If in queue, remove from queue
+ */
 void RRTXPlanner::verifyOrphan(std::size_t node_idx) {
     // Check if the node is in the queue or not
     auto it = queueMap_.find(node_idx);
@@ -734,6 +731,9 @@ void RRTXPlanner::verifyOrphan(std::size_t node_idx) {
     orphan_set_.insert(node_idx);
 }
 
+/**
+ * Update the key of the node in the queue
+ */
 void RRTXPlanner::verifyQueue(std::size_t node_idx) {
     QKey key = makeKey(node_idx);
     auto it = queueMap_.find(node_idx);
@@ -773,6 +773,14 @@ bool RRTXPlanner::keyLess(const QKey& a, const QKey& b) const {
  */
 bool RRTXPlanner::isEdgeInCollision(double x0, double y0, double x1, double y1, 
                        double xmin, double ymin, double xmax, double ymax) {
+    const double EPS = 1e-9;
+
+    if (xmin > xmax) std::swap(xmin, xmax);
+    if (ymin > ymax) std::swap(ymin, ymax);
+
+    // Case of point
+    if (std::abs(dx) < EPS && std::abs(dy) < EPS) return (x0 >= xmin && x0 <= xmax && y0 >= ymin && y0 <= ymax);
+
     double t0 = 0.0;
     double t1 = 1.0;
     double dx = x1 - x0;
@@ -783,7 +791,7 @@ bool RRTXPlanner::isEdgeInCollision(double x0, double y0, double x1, double y1,
     double q[4] = {x0 - xmin, xmax - x0, y0 - ymin, ymax - y0};
 
     for (int i = 0; i < 4; ++i) {
-        if (p[i] == 0) {
+        if (std::abs(p[i]) < EPS) {
             // Line is parallel to the boundary. If it's outside, it misses completely.
             if (q[i] < 0) return false;
         } else {
@@ -797,8 +805,8 @@ bool RRTXPlanner::isEdgeInCollision(double x0, double y0, double x1, double y1,
             }
         }
     }
-    // If we get here, a valid intersection interval [t0, t1] exists within [0, 1]
-    return true; 
+
+    return t0 <= t1 && t1 >= 0.0 && t0 <= 1.0;
 }
 
 /**
