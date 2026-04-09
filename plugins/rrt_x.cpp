@@ -31,7 +31,7 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         resolution_ = costmap_->getResolution();
 
         // Initialize the costmap snapshot
-        const unsigned int N = width_c * height_c;
+        const unsigned int N = width_c_ * height_c_;
         const uint8_t *charMap = costmap_->getCharMap();
         costmap_snapshot_.assign(charMap, charMap + N);
 
@@ -369,7 +369,7 @@ void RRTXPlanner::updateLMC(std::size_t v_idx) {
         double cost = distance(v_idx, u_idx) + u.lmc;
 
         if (min_cost > cost) {
-            min_cost cost;
+            min_cost = cost;
             best_parent = u_idx;
         }
     };
@@ -430,7 +430,7 @@ void RRTXPlanner::updateObstacles() {
     if (!newly_cleared.empty()) {
         for (unsigned int i: newly_cleared) {
             removeObstacle(i);
-            std::cout << i << ' ';
+            // std::cout << i << ' ';
         }
         reduceInconsistency();
     }
@@ -441,7 +441,7 @@ void RRTXPlanner::updateObstacles() {
     if (!newly_blocked.empty()) {
         for (unsigned int i: newly_blocked) {
             addObstacle(i);
-            std::cout << i << ' ';
+            // std::cout << i << ' ';
         }
         propogateDescendents();
         verifyQueue(start_proxy);
@@ -779,13 +779,13 @@ bool RRTXPlanner::isEdgeInCollision(double x0, double y0, double x1, double y1,
     if (xmin > xmax) std::swap(xmin, xmax);
     if (ymin > ymax) std::swap(ymin, ymax);
 
-    // Case of point
-    if (std::abs(dx) < EPS && std::abs(dy) < EPS) return (x0 >= xmin && x0 <= xmax && y0 >= ymin && y0 <= ymax);
-
     double t0 = 0.0;
     double t1 = 1.0;
     double dx = x1 - x0;
     double dy = y1 - y0;
+
+    // Case of point
+    if (std::abs(dx) < EPS && std::abs(dy) < EPS) return (x0 >= xmin && x0 <= xmax && y0 >= ymin && y0 <= ymax);
 
     // p contains the direction vectors, q contains the distances to the boundaries
     double p[4] = {-dx, dx, -dy, dy};
