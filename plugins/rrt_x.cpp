@@ -4,9 +4,11 @@
 #include <base_local_planner/line_iterator.h>
 #include <iostream>
 #include <cstdint>
+#include <cstdlib>
 #include <random>
 #include <cmath>
 #include <algorithm>
+#include <boost/stacktrace.hpp>
 
 #define INF 1e9
 
@@ -308,6 +310,11 @@ void RRTXPlanner::rewireNeighbors(std::size_t v_index) {
 
             // Link to new parent
             nbr.par_idx = v_index;
+            if (nbr_index == 0) {
+                ROS_WARN("[RRTxPlanner] Setting root's parent, g: %f\tlmc: %f", nbr.g, nbr.lmc);
+                std::cout << "[RRTXPlanner] Stack trace:" << '\n' << boost::stacktrace::stacktrace() << std::endl;
+                std::exit(1);
+            }
             v.children.push_back(nbr_index);
 
             // Update lmc
@@ -391,6 +398,7 @@ void RRTXPlanner::updateLMC(std::size_t v_idx) {
             nodes_[best_parent].children.push_back(v_idx);
         }
         v.par_idx = best_parent;
+        if (v_idx == 0) ROS_WARN("[RRTXPlanner] Setting root's parent");
     }
     v.lmc = min_cost;
 }
@@ -426,28 +434,30 @@ void RRTXPlanner::updateObstacles() {
     std::memcpy(costmap_snapshot_.data(), live, N);
 
     // Handle removed obstacles
-    std::cout << "Removing obstacles: ";
+    std::cout << "Removing obstacles...";
     if (!newly_cleared.empty()) {
         for (unsigned int i: newly_cleared) {
             removeObstacle(i);
+            if (i==0) ROS_WARN("[RRTXPlanner] Removing root from obstacles");
             // std::cout << i << ' ';
         }
         reduceInconsistency();
     }
-    std::cout << std::endl;
+    std::cout << " Completed." << std::endl;
 
     // Handle added obstacles
-    std::cout << "Adding obstacles: ";
+    std::cout << "Adding obstacles...";
     if (!newly_blocked.empty()) {
         for (unsigned int i: newly_blocked) {
             addObstacle(i);
+            if (i == 0) ROS_WARN("[RRTXPlanner] Adding root as obstacle");
             // std::cout << i << ' ';
         }
         propogateDescendents();
         verifyQueue(start_proxy);
         reduceInconsistency();
     }
-    std::cout << std::endl;
+    std::cout << " Completed." << std::endl;
 }
 
 void RRTXPlanner::removeObstacle(unsigned int i) {
@@ -699,6 +709,7 @@ void RRTXPlanner::propogateDescendents() {
 
     // Sever all tree connections of the nodes in orphan set
     for (std::size_t v_idx: orphan_set_) {
+        if (v_idx == 0) ROS_WARN("[RRTXPlanner] Root is in the orphan set");
         Node& v = nodes_[v_idx];
         v.g = std::numeric_limits<double>::infinity();
         v.lmc = std::numeric_limits<double>::infinity();
