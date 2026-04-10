@@ -697,6 +697,7 @@ void RRTXPlanner::propogateDescendents() {
         
         auto invalidate_neighbor = [&](std::size_t u_idx) {
             if (u_idx != Node::INVALID_IDX && orphan_set_.count(u_idx) == 0) {
+                if (u_idx == 0) ROS_WARN("Root is being added to the queue");
                 nodes_[u_idx].g = std::numeric_limits<double>::infinity();
                 verifyQueue(u_idx);
             }
