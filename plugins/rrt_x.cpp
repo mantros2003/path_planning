@@ -398,7 +398,7 @@ void RRTXPlanner::updateLMC(std::size_t v_idx) {
             nodes_[best_parent].children.push_back(v_idx);
         }
         v.par_idx = best_parent;
-        if (v_idx == 0) ROS_WARN("[RRTXPlanner] Setting root's parent");
+        if (v_idx == 0) ROS_WARN("[RRTXPlanner] Setting root's parent in updateLMC");
     }
     v.lmc = min_cost;
 }
