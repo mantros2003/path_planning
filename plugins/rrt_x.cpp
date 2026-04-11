@@ -356,8 +356,11 @@ void RRTXPlanner::cullNeighbors(std::size_t node_idx) {
 }
 
 void RRTXPlanner::updateLMC(std::size_t v_idx) {
-    if (v_idx == 0) ROS_WARN("Updating root's lmc");
-    cullNeighbors(v_idx); 
+    if (v_idx == 0) {
+        ROS_WARN("[RRTXPlanner] Trying to update root's lmc... stopped");
+        return;
+    }
+    cullNeighbors(v_idx);
     
     Node& v = nodes_[v_idx];
     
@@ -401,7 +404,7 @@ void RRTXPlanner::updateLMC(std::size_t v_idx) {
             nodes_[best_parent].children.push_back(v_idx);
         }
         v.par_idx = best_parent;
-        if (v_idx == 0) ROS_WARN("[RRTXPlanner] Setting root's parent in updateLMC");
+        if (v_idx == 0) ROS_WARN("[RRTXPlanner] Setting root's parent to %lu in updateLMC", best_parent);
     }
     v.lmc = min_cost;
 }
@@ -495,6 +498,8 @@ void RRTXPlanner::removeObstacle(unsigned int i) {
 
             // Verify the edge is clear against all remaining obstacles
             if (!hasObstacle(Point<double, 2>({v.x, v.y}), Point<double, 2>({u.x, u.y}))) {
+                if (u_idx == 0) ROS_INFO("[RRTXPlanner] Root is other end of edge");
+
                 v.blocked_nbrs.erase(u_idx);
                 u.blocked_nbrs.erase(v_idx);
 
