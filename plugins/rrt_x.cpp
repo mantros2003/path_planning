@@ -268,6 +268,8 @@ void RRTXPlanner::reduceInconsistency() {
         queue_.erase(top);
         queueMap_.erase(v_idx);
 
+        if (v_idx == 0) ROS_WARN("Root is in the queue");
+
         Node& v = nodes_[v_idx];
         v.in_queue = false;
 
@@ -434,7 +436,7 @@ void RRTXPlanner::updateObstacles() {
     std::memcpy(costmap_snapshot_.data(), live, N);
 
     // Handle removed obstacles
-    std::cout << "Removing obstacles...";
+    ROS_INFO("Removing obstacles...");
     if (!newly_cleared.empty()) {
         for (unsigned int i: newly_cleared) {
             removeObstacle(i);
@@ -443,10 +445,10 @@ void RRTXPlanner::updateObstacles() {
         }
         reduceInconsistency();
     }
-    std::cout << " Completed." << std::endl;
+    ROS_INFO("Completed.");
 
     // Handle added obstacles
-    std::cout << "Adding obstacles...";
+    ROS_INFO("Adding obstacles...");
     if (!newly_blocked.empty()) {
         for (unsigned int i: newly_blocked) {
             addObstacle(i);
@@ -457,7 +459,7 @@ void RRTXPlanner::updateObstacles() {
         verifyQueue(start_proxy);
         reduceInconsistency();
     }
-    std::cout << " Completed." << std::endl;
+    ROS_INFO("Completed.");
 }
 
 void RRTXPlanner::removeObstacle(unsigned int i) {
@@ -748,7 +750,7 @@ void RRTXPlanner::verifyOrphan(std::size_t node_idx) {
  * Update the key of the node in the queue
  */
 void RRTXPlanner::verifyQueue(std::size_t node_idx) {
-    if (node_idx == 0) ROS_WARN("[RRTXPlanner] Node is being added to queue");
+    if (node_idx == 0) ROS_WARN("[RRTXPlanner] Root is being added to queue");
     QKey key = makeKey(node_idx);
     auto it = queueMap_.find(node_idx);
     if (it == queueMap_.end()) {
