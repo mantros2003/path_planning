@@ -260,7 +260,7 @@ void RRTXPlanner::reduceInconsistency() {
            (keyLess(topKey(), botKey)               ||
             std::abs(bot.lmc - bot.g) > epsilon_    ||
             bot.g == std::numeric_limits<double>::infinity() ||
-            bot.in_queue)) 
+            bot.in_queue))
     {
         // Remove the minimum from the queue
         auto top = queue_.begin();
@@ -268,7 +268,7 @@ void RRTXPlanner::reduceInconsistency() {
         queue_.erase(top);
         queueMap_.erase(v_idx);
 
-        if (v_idx == 0) ROS_WARN("Root is in the queue");
+        if (v_idx == 0) ROS_WARN("[RRTXPlanner] Root is in the queue");
 
         Node& v = nodes_[v_idx];
         v.in_queue = false;
@@ -356,6 +356,7 @@ void RRTXPlanner::cullNeighbors(std::size_t node_idx) {
 }
 
 void RRTXPlanner::updateLMC(std::size_t v_idx) {
+    if (v_idx == 0) ROS_WARN("Updating root's lmc");
     cullNeighbors(v_idx); 
     
     Node& v = nodes_[v_idx];
