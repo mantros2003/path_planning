@@ -757,7 +757,10 @@ void RRTXPlanner::verifyOrphan(std::size_t node_idx) {
  * Update the key of the node in the queue
  */
 void RRTXPlanner::verifyQueue(std::size_t node_idx) {
-    if (node_idx == 0) ROS_WARN("[RRTXPlanner] Root is being added to queue");
+    if (node_idx == 0) {
+        ROS_WARN("[RRTXPlanner] Root is being added to queue");
+        return;
+    }
     QKey key = makeKey(node_idx);
     auto it = queueMap_.find(node_idx);
     if (it == queueMap_.end()) {
