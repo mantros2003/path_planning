@@ -33,9 +33,9 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         resolution_ = costmap_->getResolution();
 
         // Initialize the costmap snapshot
-        const unsigned int N = width_c_ * height_c_;
-        const uint8_t *charMap = costmap_->getCharMap();
-        costmap_snapshot_.assign(charMap, charMap + N);
+        // const unsigned int N = width_c_ * height_c_;
+        // const uint8_t *charMap = costmap_->getCharMap();
+        // costmap_snapshot_.assign(charMap, charMap + N);
 
         initialized_ = true;
 
@@ -88,7 +88,7 @@ bool RRTXPlanner::makePlan(
 
     // Check if obstacles have changed and update the queues
     if (nodes_.size() > 1) {
-        start_proxy = findStartProxy();
+        start_proxy = start_proxy;
         updateObstacles();
     }
 
@@ -188,7 +188,7 @@ bool RRTXPlanner::makePlan(
     std::size_t current_idx = findStartProxy();
     
     if (current_idx == Node::INVALID_IDX) {
-        ROS_ERROR("[RRTXPlanner] RRTXPlanner: Start proxy is invalid despite tree being connected.");
+        ROS_ERROR("[RRTXPlanner] Start proxy is invalid despite tree being connected.");
         return false;
     }
 
@@ -659,16 +659,17 @@ std::size_t RRTXPlanner::findStartProxy() {
 
     // If there's no obstacle between the robot and this node
     if (!hasObstacle(start_, proxy_pt)) {
+        if (proxy_idx == 0) ROS_WARN("[RRTXPlanner] Start proxy is the root");
         return proxy_idx;
     }
 
     // We must search a local radius for the closest node that we can actually see
     // We can change search radius to a multiple of step length
-    double search_radius = step_length_;
+    double search_radius = 2 * step_length_;
     std::vector<std::size_t> local_neighbors = kd_tree.radius_search(start_, search_radius);
 
     double min_dist = std::numeric_limits<double>::infinity();
-    std::size_t best_visible_proxy = proxy_idx;
+    std::size_t best_visible_proxy = Node::INVALID_IDX;
 
     for (std::size_t nbr_idx : local_neighbors) {
         Node& nbr = nodes_[nbr_idx];
