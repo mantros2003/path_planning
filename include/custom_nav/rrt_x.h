@@ -19,6 +19,8 @@
 
 namespace custom_planner {
 
+double computePathLength(const std::vector<geometry_msgs::PoseStamped>&);
+
 /**
  * Structure to store the information needed for the RRTx algorithm
  */
