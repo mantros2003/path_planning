@@ -13,6 +13,30 @@ PLUGINLIB_EXPORT_CLASS(
 
 namespace custom_planner {
 
+/**
+ * Helper function to compute the path length of the generated path
+ */
+double computePathLength(
+    const std::vector<geometry_msgs::PoseStamped>& plan)
+{
+    if (plan.size() < 2)
+        return 0.0;
+
+    double total_length = 0.0;
+
+    for (std::size_t i = 1; i < plan.size(); ++i) {
+        double dx = plan[i].pose.position.x -
+                    plan[i-1].pose.position.x;
+
+        double dy = plan[i].pose.position.y -
+                    plan[i-1].pose.position.y;
+
+        total_length += std::hypot(dx, dy);
+    }
+
+    return total_length;
+}
+
 // NOTE: Convert all distances to `double`
 
 inline double heuristic(int sx, int sy, int gx, int gy) {
@@ -40,6 +64,8 @@ bool AStarPlanner::makePlan(
     std::vector<geometry_msgs::PoseStamped>& plan
 ) {
     ROS_INFO("Making path");
+
+    ros::Time start_time = ros::Time::now();
 
     // The start and goal x, y coordinates
     unsigned int sx, sy, gx, gy;
@@ -125,6 +151,8 @@ bool AStarPlanner::makePlan(
     }
 
     ROS_INFO("Made a path of %ld points", plan.size());
+    double path_len = computePathLength(plan);
+    ROS_INFO("[RRTXPlanner] Successfully extracted path with %zu waypoints,\tPath length: %.3f m,\tPlanning time: %.3f ms", plan.size(), path_len, (ros::Time::now() - start_time).toSec() * 1000);
 
     return true;
 }
