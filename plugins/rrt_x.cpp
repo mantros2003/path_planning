@@ -72,6 +72,7 @@ bool RRTXPlanner::makePlan(
     if (isNewGoal(gx, gy)) {
         ROS_INFO("[RRTXPlanner] Got a new goal, cleaning old containers");
         resetTree();
+        costmap_snapshot_.clear();
         
         Node root_node(goal.pose.position.x, goal.pose.position.y);
         root_node.g = 0.0;
@@ -88,7 +89,7 @@ bool RRTXPlanner::makePlan(
 
     // Check if obstacles have changed and update the queues
     if (nodes_.size() > 1) {
-        start_proxy = start_proxy;
+        start_proxy = findStartProxy();
         updateObstacles();
     }
 
@@ -185,6 +186,7 @@ bool RRTXPlanner::makePlan(
     plan.clear();
 
     // Find the node closest to our current start position to begin tracing
+    // Or should we use the start proxy calculated initially
     std::size_t current_idx = findStartProxy();
     
     if (current_idx == Node::INVALID_IDX) {
@@ -525,26 +527,53 @@ void RRTXPlanner::addObstacle(unsigned int i) {
     double xmax = xmin + resolution_;
     double ymax = ymin + resolution_;
 
+    // auto process = [&] (auto& store) {
+    //     for (std::size_t u_idx: store) {
+    //         if (v.blocked_nbrs.count(u_idx) > 0) continue;
+
+    //         Node& u = nodes_[u_idx];
+    //         if (isEdgeInCollision(u.x, u.y, v.x, v.y, xmin, ymin, xmax, ymax)) {
+    //             v.blocked_nbrs.insert(u_idx);
+    //             u.blocked_nbrs.insert(v_idx);
+
+    //             if (v.par_idx == u_idx) verifyOrphan(v_idx);
+    //             else if (u.par_idx == v_idx) verifyOrphan(u_idx);
+
+    //             // Can also add condition to stop the robot if the obstacle is in current path
+    //         }
+    //     }
+    // };
+
     // Make the set of edges that intersect this obstacle
     // Get the points that are within step_length_ of the obstacle
     std::vector<std::size_t> possible_invalidated_points = kd_tree.radius_search(Point<double, 2>({xmin, ymin}), step_length_ + resolution_);
     for (std::size_t v_idx: possible_invalidated_points) {
         Node& v = nodes_[v_idx];
 
-        for (std::size_t u_idx: v.nbr_running) {
-            if (v.blocked_nbrs.count(u_idx) > 0) continue;
+        auto process_neighbors = [&](const auto& neighbors) {
+            for (std::size_t u_idx : neighbors) {
+                if (v.blocked_nbrs.count(u_idx) > 0)
+                    continue;
 
-            Node& u = nodes_[u_idx];
-            if (isEdgeInCollision(u.x, u.y, v.x, v.y, xmin, ymin, xmax, ymax)) {
-                v.blocked_nbrs.insert(u_idx);
-                u.blocked_nbrs.insert(v_idx);
+                Node& u = nodes_[u_idx];
 
-                if (v.par_idx == u_idx) verifyOrphan(v_idx);
-                else if (u.par_idx == v_idx) verifyOrphan(u_idx);
+                if (isEdgeInCollision(
+                        u.x, u.y, v.x, v.y,
+                        xmin, ymin, xmax, ymax)) {
 
-                // Can also add condition to stop the robot if the obstacle is in current path
+                    v.blocked_nbrs.insert(u_idx);
+                    u.blocked_nbrs.insert(v_idx);
+
+                    if (v.par_idx == u_idx) verifyOrphan(v_idx);
+                    else if (u.par_idx == v_idx) verifyOrphan(u_idx);
+
+                    // Can also add condition to stop the robot if the obstacle is in current path
+                }
             }
-        }
+        };
+
+        process_neighbors(v.nbr_running);
+        process_neighbors(v.nbr_init);
     }
 }
 
@@ -594,12 +623,12 @@ bool RRTXPlanner::isConnected(double sx, double sy) {
     double min_distance = std::numeric_limits<double>::infinity();
 
     for (std::size_t idx: neighbors) {
-        Node n = nodes_[idx];
+        Node& n = nodes_[idx];
 
         if (n.g >= std::numeric_limits<double>::infinity()) continue;
 
         Point<double, 2> n_pt({nodes_[idx].x, nodes_[idx].y});
-        double distance_to_goal = n.g + n_pt.distanceSquared(start_pt);
+        double distance_to_goal = n.g + n_pt.distance(start_pt);
         if (distance_to_goal <= min_distance) {
             min_distance = distance_to_goal;
             best_index = idx;
