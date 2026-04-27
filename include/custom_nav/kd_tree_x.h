@@ -165,14 +165,14 @@ void kdTree<T, D>::_nearest(int root, Point<T, D> p, std::size_t depth, int& bes
 
     // Determine the partition that contains the point
     double diff = p[axis] - nodes[root].p[axis];
-    int near = (diff > 0) ? nodes[root].right : nodes[root].left;
-    int far = (diff < 0) ? nodes[root].right : nodes[root].left;
+    int near = (diff < 0) ? nodes[root].left : nodes[root].right;
+    int far  = (diff < 0) ? nodes[root].right : nodes[root].left;
 
     // Search the partition that contains the point
     _nearest(near, p, depth + 1, best_node, min_dist);
 
     // Only check the other side if there is a chance that a better point exists on the other side
-    if ((diff * diff) < min_dist) _nearest(far, p, depth + 1, best_node, min_dist);
+    if ((diff * diff) <= min_dist) _nearest(far, p, depth + 1, best_node, min_dist);
 }
 
 // Internal recursive radius search

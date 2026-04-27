@@ -1,4 +1,4 @@
-#include <custom_nav/kd_tree.h>
+#include <custom_nav/kd_tree_x.h>
 #include <iostream>
 #include <random>
 #include <chrono>
@@ -51,7 +51,7 @@ void test_nns() {
         // Build the tree
         for (int i = 0; i < POINTS_PER_TREE; ++i) {
             Point<int, 2> p = {dist(rng), dist(rng)};
-            tree.insert(p);
+            tree.insert(p, i);
             point_cloud.push_back(p);
         }
 
@@ -67,7 +67,8 @@ void test_nns() {
 
             // Time KD-Tree
             auto start_kd = std::chrono::high_resolution_clock::now();
-            point res_kd = tree.nearest(query);
+            std::size_t res_kd_idx = tree.nearest(query);
+            point res_kd = point_cloud[res_kd_idx];
             auto end_kd = std::chrono::high_resolution_clock::now();
             total_kd_time += std::chrono::duration_cast<std::chrono::microseconds>(end_kd - start_kd).count();
 
@@ -92,7 +93,7 @@ void test_radius_search() {
     const int NUM_SETS = 100;
     const int POINTS_PER_TREE = 10000;
     const int QUERIES_PER_SET = 100;
-    const double SEARCH_RADIUS = 5000.0; // Adjust this based on your coordinate spread
+    const double SEARCH_RADIUS = 500.0; // Adjust this based on your coordinate spread
 
     std::mt19937 rng(1337);
     std::uniform_int_distribution<int> dist(0, 100000);
@@ -111,10 +112,17 @@ void test_radius_search() {
         kdTree<int, 2> tree;
         std::vector<point> point_cloud;
 
+        auto point_cmp_kd = [&](const std::size_t a, const std::size_t b) {
+            point pt_a = point_cloud[a];
+            point pt_b = point_cloud[b];
+            if (pt_a[0] != pt_b[0]) return pt_a[0] < pt_b[0];
+            return pt_a[1] < pt_b[1];
+        };
+
         // Build the tree
         for (int i = 0; i < POINTS_PER_TREE; ++i) {
             Point<int, 2> p = {dist(rng), dist(rng)};
-            tree.insert(p);
+            tree.insert(p, i);
             point_cloud.push_back(p);
         }
 
@@ -131,7 +139,7 @@ void test_radius_search() {
             // Time KD-Tree
             auto start_kd = std::chrono::high_resolution_clock::now();
             // Assuming your tree's method is named `radius_search` and returns a std::vector<point>
-            std::vector<point> res_kd = tree.radius_search(query, SEARCH_RADIUS); 
+            std::vector<std::size_t> res_kd = tree.radius_search(query, SEARCH_RADIUS); 
             auto end_kd = std::chrono::high_resolution_clock::now();
             total_kd_time += std::chrono::duration_cast<std::chrono::microseconds>(end_kd - start_kd).count();
 
@@ -143,11 +151,11 @@ void test_radius_search() {
             } else {
                 // Sort both vectors to handle out-of-order results
                 std::sort(res_b.begin(), res_b.end(), point_cmp);
-                std::sort(res_kd.begin(), res_kd.end(), point_cmp);
+                std::sort(res_kd.begin(), res_kd.end(), point_cmp_kd);
 
                 bool match = true;
                 for (size_t i = 0; i < res_b.size(); ++i) {
-                    if (res_b[i][0] != res_kd[i][0] || res_b[i][1] != res_kd[i][1]) {
+                    if (res_b[i][0] != point_cloud[res_kd[i]][0] || res_b[i][1] != point_cloud[res_kd[i]][1]) {
                         match = false;
                         break;
                     }
