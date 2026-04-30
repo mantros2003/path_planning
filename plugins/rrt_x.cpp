@@ -183,7 +183,7 @@ bool RRTXPlanner::makePlan(
 
         new_node.par_idx = best_parent;
         new_node.lmc = min_cost;
-        new_node.g = min_cost; // It is initially consistent
+        new_node.g = std::numeric_limits<double>::infinity();   // Keeping it inf so that rewiring happens
         
         // Add to tree
         // Update the tree insert function to support adding indices

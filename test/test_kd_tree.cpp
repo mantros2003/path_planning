@@ -4,6 +4,11 @@
 #include <chrono>
 #include <limits>
 
+#define NUM_SETS 100
+#define POINTS_PER_TREE 500
+#define QUERIES_PER_SET 100
+#define SEARCH_RADIUS 5000.0
+
 typedef Point<int, 2> point;
 
 point brute_force(const std::vector<point>& cloud, point target) {
@@ -33,9 +38,9 @@ std::vector<point> brute_force_radius(const std::vector<point>& cloud, point tar
 }
 
 void test_nns() {
-    const int NUM_SETS = 100;
-    const int POINTS_PER_TREE = 10000;
-    const int QUERIES_PER_SET = 100;
+    // const int NUM_SETS = 100;
+    // const int POINTS_PER_TREE = 10000;
+    // const int QUERIES_PER_SET = 100;
 
     std::mt19937 rng(1337);
     std::uniform_int_distribution<int> dist(0, 100000);
@@ -90,10 +95,10 @@ void test_nns() {
 }
 
 void test_radius_search() {
-    const int NUM_SETS = 100;
-    const int POINTS_PER_TREE = 10000;
-    const int QUERIES_PER_SET = 100;
-    const double SEARCH_RADIUS = 500.0; // Adjust this based on your coordinate spread
+    // const int NUM_SETS = 100;
+    // const int POINTS_PER_TREE = 10000;
+    // const int QUERIES_PER_SET = 100;
+    // const double SEARCH_RADIUS = 5000.0; // Adjust this based on your coordinate spread
 
     std::mt19937 rng(1337);
     std::uniform_int_distribution<int> dist(0, 100000);

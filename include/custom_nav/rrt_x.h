@@ -82,7 +82,8 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         epsilon_(0.1),           // Default epsilon for collision checking/math
         max_iters_(10000),       // Default maximum iterations before giving up
         rng{dev()},              // Initialize the random number genera with the random device
-        rand01{0.0, 1.0}         // Initialize the distribution
+        rand01{0.0, 1.0},        // Initialize the distribution
+        radius_(step_length_)
         {}
 
         void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
