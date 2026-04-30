@@ -321,7 +321,7 @@ void RRTXPlanner::rewireNeighbors(std::size_t v_index) {
 
     // Check all the neighbors
     for (std::size_t nbr_index: v.nbr_init) {
-        if (nbr_index == v.par_idx) continue;
+        if (nbr_index == v.par_idx || nbr_index == 0) continue;
 
         Node& nbr = nodes_[nbr_index];
         double nbr_dist_via_v = v.lmc + distance(v_index, nbr_index);
