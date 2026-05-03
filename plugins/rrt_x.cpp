@@ -194,6 +194,8 @@ bool RRTXPlanner::makePlan(
         radius_ = getRadius();
 
         rewireNeighbors(new_idx);
+        // In the Julia implementation by Otte, new node was explicitly added to the heap
+        verifyQueue(new_idx);
         reduceInconsistency();
 
         iters++;
@@ -653,7 +655,7 @@ bool RRTXPlanner::isConnected(double sx, double sy) {
         if (n.g >= std::numeric_limits<double>::infinity()) continue;
 
         Point<double, 2> n_pt({nodes_[idx].x, nodes_[idx].y});
-        double distance_to_goal = n.g + n_pt.distance(start_pt);
+        double distance_to_goal = n.lmc + n_pt.distance(start_pt);
         if (distance_to_goal <= min_distance) {
             min_distance = distance_to_goal;
             best_index = idx;
@@ -701,25 +703,27 @@ double RRTXPlanner::getRadius() const {
  */
 std::size_t RRTXPlanner::findStartProxy() {
     // Get the nearest node
-    std::size_t proxy_idx = kd_tree.nearest(start_);
+    // std::size_t proxy_idx = kd_tree.nearest(start_);
     
     // If the tree is empty or invalid, return the invalid index
-    if (proxy_idx == Node::INVALID_IDX || proxy_idx >= nodes_.size()) {
-        return Node::INVALID_IDX;
-    }
+    // if (proxy_idx == Node::INVALID_IDX || proxy_idx >= nodes_.size()) {
+    //     return Node::INVALID_IDX;
+    // }
 
-    Node& nearest_node = nodes_[proxy_idx];
-    Point<double, 2> proxy_pt({nearest_node.x, nearest_node.y});
+    // Node& nearest_node = nodes_[proxy_idx];
+    // Point<double, 2> proxy_pt({nearest_node.x, nearest_node.y});
 
     // If there's no obstacle between the robot and this node
-    if (!hasObstacle(start_, proxy_pt)) {
-        if (proxy_idx == 0) ROS_WARN("[RRTXPlanner] Start proxy is the root");
-        return proxy_idx;
-    }
+    // if (!hasObstacle(start_, proxy_pt)) {
+    //     if (proxy_idx == 0) ROS_WARN("[RRTXPlanner] Start proxy is the root");
+    //     return proxy_idx;
+    // }
 
     // We must search a local radius for the closest node that we can actually see
     // We can change search radius to a multiple of step length
-    double search_radius = 2 * step_length_;
+
+    // Can also use some other value, eg 2 * step_length_
+    double search_radius = radius_;
     std::vector<std::size_t> local_neighbors = kd_tree.radius_search(start_, search_radius);
 
     double min_dist = std::numeric_limits<double>::infinity();
@@ -731,7 +735,7 @@ std::size_t RRTXPlanner::findStartProxy() {
 
         // Check if we have a clear path to this neighbor
         // And if we improve the previous cost
-        double dist = start_.distance(nbr_pt);
+        double dist = nbr.lmc + start_.distance(nbr_pt);
         if (dist <= min_dist && !hasObstacle(start_, nbr_pt)) {
             min_dist = dist;
             best_visible_proxy = nbr_idx;
