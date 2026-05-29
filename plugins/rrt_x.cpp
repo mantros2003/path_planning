@@ -61,6 +61,8 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         // const uint8_t *charMap = costmap_->getCharMap();
         // costmap_snapshot_.assign(charMap, charMap + N);
 
+        _buildFreeCellList();
+
         initialized_ = true;
 
         ROS_INFO("[RRTXPlanner] Initialized RRTX planner with map of size %fm * %fm", height_m_, width_m_);
@@ -105,6 +107,8 @@ bool RRTXPlanner::makePlan(
         kd_tree.insert(Point<double, 2>({root_node.x, root_node.y}), 0);
         planned_ = false;
         // Add to kd tree
+        _buildFreeCellList();
+        ROS_INFO("Number of cells in free cell list: %zu", free_cells.size());
     }
     
     // Modify the global variables
@@ -118,17 +122,43 @@ bool RRTXPlanner::makePlan(
     }
 
     // Grow or refine the tree
+    // But if the initial tree is densed enough we need not sample more nodes
     // Sample, find nearest, grow tree
     int iters = 0;
+    /*
+     * Because of how we were sampling, the sample efficency was very less
+     * The costmap has much more area than only the mapped region
+     * To solve this issue, we can precompute the free cells and sample from them
+     * We can then update this on runtime
+     */
+    int total_samples = 0;
+    int out[5] = {0, 0, 0, 0, 0};
+
+    unsigned int min_x = 1000, min_y = 1000;
+    unsigned int max_x = 0, max_y = 0;
+    // Modify it so that it only samples node initially, remove the second loop condition
     while ((!planned_ && iters < max_iters_) || (isConnected(sx, sy) && iters < 5))
     // while ((!isConnected(sx, sy) && iters < max_iters_) || iters < 1)
     {
-        double x = origin_x + (rand01(rng) * width_m_);
-        double y = origin_y + (rand01(rng) * height_m_);
+        // double x = origin_x + (rand01(rng) * width_m_);
+        // double y = origin_y + (rand01(rng) * height_m_);
+
+        double x, y;
+        std::pair<double, double> sampled_pt = samplePoint();
+        x = sampled_pt.first;
+        y = sampled_pt.second;
+
+        total_samples++;
 
         unsigned int mx, my;
-        if (!costmap_->worldToMap(x, y, mx, my)) continue;
-        if (costmap_->getCost(mx, my) >= obstacle_cost_threshold_) continue;
+        if (!costmap_->worldToMap(x, y, mx, my)) {
+            out[0]++;
+            continue;
+        }
+        if (costmap_->getCost(mx, my) >= obstacle_cost_threshold_) {
+            out[1]++;
+            continue;
+        }
 
         Point<double, 2> random_pt({x, y});
 
@@ -140,11 +170,26 @@ bool RRTXPlanner::makePlan(
         // Move in the direction of the random point from the near point
         Point<double, 2> new_pt = steer(near_pt[0], near_pt[1], random_pt[0], random_pt[1]);
 
-        if (!costmap_->worldToMap(new_pt[0], new_pt[1], mx, my)) continue;
-        if (costmap_->getCost(mx, my) >= obstacle_cost_threshold_) continue;
-        
+        // Check if this point is in bounds
+        if (!costmap_->worldToMap(new_pt[0], new_pt[1], mx, my)) {
+            out[2]++;
+            continue;
+        }
+        // Check if hte new point is near an obstacle
+        if (costmap_->getCost(mx, my) >= obstacle_cost_threshold_) {
+            out[3]++;
+            continue;
+        }
         // Check if the path is free of obstacles
-        if (hasObstacle(near_pt, new_pt)) continue;
+        if (hasObstacle(near_pt, new_pt)) {
+            out[4]++;
+            continue;
+        }
+
+        min_x = std::min(min_x, mx);
+        min_y = std::min(min_y, my);
+        max_x = std::max(max_x, mx);
+        max_y = std::max(max_y, my);
 
         // If not an obstacle, then add the point to the tree
         Node new_node(new_pt[0], new_pt[1]);
@@ -202,6 +247,9 @@ bool RRTXPlanner::makePlan(
     }
 
     ROS_INFO("[RRTXPlanner] Our graph has %zu nodes", nodes_.size());
+    ROS_INFO("[RRTXPlanner] Total samples taken: %d", total_samples);
+    ROS_INFO("[RRTXPlanner] Failed samples: %d, %d, %d, %d, %d", out[0], out[1], out[2], out[3], out[4]);
+    ROS_INFO("[RRTXPlanner] Bounding boxes of all the valid samples: (%u, %u) - (%u, %u)", min_x, min_y, max_x, max_y);
 
     if (!isConnected(sx, sy)) {
         ROS_WARN("[RRTXPlanner] Failed to find a path to the goal within max iterations.");
@@ -484,7 +532,7 @@ void RRTXPlanner::updateObstacles() {
     ROS_INFO("Adding obstacles...");
     if (!newly_blocked.empty()) {
         for (unsigned int i: newly_blocked) {
-            addObstacle(i);
+            .addObstacle(i);
             if (i == 0) ROS_WARN("[RRTXPlanner] Adding root as obstacle");
             // std::cout << i << ' ';
         }
@@ -891,6 +939,36 @@ bool RRTXPlanner::isEdgeInCollision(double x0, double y0, double x1, double y1,
     }
 
     return t0 <= t1 && t1 >= 0.0 && t0 <= 1.0;
+}
+
+std::pair<double, double> RRTXPlanner::samplePoint() {
+    std::size_t num_free_cells = free_cells.size();
+    std::uniform_int_distribution<> distr(0, num_free_cells - 1);
+
+    std::size_t random_cell = distr(rng);
+    std::pair<unsigned int, unsigned int> point = free_cells[random_cell];
+
+    unsigned int cell_x, cell_y;
+    cell_x = point.first;
+    cell_y = point.second;
+
+    double wx, wy;
+    costmap_->mapToWorld(cell_x, cell_y, wx, wy);
+
+    wx += (rand01(rng) - 0.5) * resolution_;
+    wy += (rand01(rng) - 0.5) * resolution_;
+
+    return std::make_pair(wx, wy);
+}
+
+void RRTXPlanner::_buildFreeCellList() {
+    free_cells.clear();
+
+    for (unsigned int y = 140; y < 260; y++) {
+        for (unsigned int x = 140; x < 260; x++) {
+            if (costmap_->getCost(x, y) < obstacle_cost_threshold_) free_cells.emplace_back(x, y);
+        }
+    }
 }
 
 /**

@@ -1,0 +1,9 @@
+- Experiment: Trying to improve sampling efficiency
+  - The problem is that the costmap stores more data/cells than just the map. For example, the turtlebot map's costmap is 19.175m * 19.175m, but the map is only 6m * 6m.
+  - The idea is to store the valid, and then sample from these cells.
+  - In first attempt, I computed the free cells during initialization of the planner, but at that time a lot of data is incorrect.
+  - ~92.7% samples are rejected because the steered point lies on some obstacle.
+  - The data is not incorrect as mentioned in pt. 3, but the cells outside our map are also marked as free, i.e. with cost 0.
+  - Figured out the extremeties of the nodes of the tree that was being built by the algorithm, and used that as threshold for building the initial free cell list.
+  - Improved the smpling efficiency to 57.8%.
+  - Found a bug: When max_iters is set to 10000 and the second round of sampling is going on, move_base crashes with exit code either -11 or 11(segmentation fault).

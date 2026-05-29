@@ -80,7 +80,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         step_length_(0.3),       // Default edge length
         goal_tolerance_(0.2),    // Default tolerance to reach goal
         epsilon_(0.1),           // Default epsilon for collision checking/math
-        max_iters_(3000),       // Default maximum iterations before giving up
+        max_iters_(10000),       // Default maximum iterations before giving up
         rng{dev()},              // Initialize the random number genera with the random device
         rand01{0.0, 1.0},        // Initialize the distribution
         radius_(0.3)
@@ -104,6 +104,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         double radius_;                         // The radius for neighborhood search
         std::vector<uint8_t> costmap_snapshot_; // Holds the last known values of the costmap
         std::vector<unsigned int> obstacles_;   // Indices of obstacles in the costmap
+        std::vector<std::pair<unsigned int, unsigned int>> free_cells;   // Maintain a list of free cells and sample from this to make sampling efficient
 
         Point<double, 2> goal_, start_;
 
@@ -157,6 +158,8 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         bool keyLess(const QKey&, const QKey&) const;
         bool isEdgeInCollision(double, double, double, double, 
                        double, double, double, double);
+        std::pair<double, double> samplePoint();
+        void _buildFreeCellList();
         double squaredDistance(const std::size_t, const std::size_t) const;
         double distance(const std::size_t, const std::size_t) const;
 };
