@@ -362,6 +362,9 @@ void RRTXPlanner::reduceInconsistency() {
     }
 }
 
+/**
+ * Checks if the node's path cost can be reduced by rewiring to a new parent
+ */
 void RRTXPlanner::rewireNeighbors(std::size_t v_index) {
     Node& v = nodes_[v_index];
 
@@ -652,6 +655,9 @@ void RRTXPlanner::addObstacle(unsigned int i) {
     }
 }
 
+/**
+ * Returns a point that is between the random point and the near point
+ */
 Point<double, 2> RRTXPlanner::steer(double near_x, double near_y, double rand_x, double rand_y) {
     double new_x, new_y;
 
@@ -715,6 +721,10 @@ bool RRTXPlanner::isConnected(double sx, double sy) {
     return false;
 }
 
+/**
+ * Scans the line from start to finish
+ * Checks every cell, and returns if there is an obstacle on any of them
+ */
 bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
     int sx = start % width_c_, sy = start / width_c_, gx = end % width_c_, gy = end / width_c_;
     for (base_local_planner::LineIterator line(sx, sy, gx, gy); line.isValid(); line.advance()) {
@@ -723,6 +733,9 @@ bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
     return false;
 }
 
+/**
+ * Checks if there is an obstacle between p1 and p2
+ */
 bool RRTXPlanner::hasObstacle(Point<double, 2> p1, Point<double, 2> p2) {
     unsigned int start, end;
     unsigned int mx, my;
@@ -941,6 +954,10 @@ bool RRTXPlanner::isEdgeInCollision(double x0, double y0, double x1, double y1,
     return t0 <= t1 && t1 >= 0.0 && t0 <= 1.0;
 }
 
+/**
+ * Randomly samples a cell from the free cell list
+ * Then adds random noise so that the final point is a random point from inside the cell
+ */
 std::pair<double, double> RRTXPlanner::samplePoint() {
     std::size_t num_free_cells = free_cells.size();
     std::uniform_int_distribution<> distr(0, num_free_cells - 1);
@@ -961,6 +978,9 @@ std::pair<double, double> RRTXPlanner::samplePoint() {
     return std::make_pair(wx, wy);
 }
 
+/**
+ * Populate the initial free cell list
+ */
 void RRTXPlanner::_buildFreeCellList() {
     free_cells.clear();
 
