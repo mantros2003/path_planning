@@ -535,7 +535,7 @@ void RRTXPlanner::updateObstacles() {
     ROS_INFO("Adding obstacles...");
     if (!newly_blocked.empty()) {
         for (unsigned int i: newly_blocked) {
-            .addObstacle(i);
+            addObstacle(i);
             if (i == 0) ROS_WARN("[RRTXPlanner] Adding root as obstacle");
             // std::cout << i << ' ';
         }
