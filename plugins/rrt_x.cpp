@@ -276,6 +276,8 @@ bool RRTXPlanner::makePlan(
     ROS_INFO("[RRTXPlanner] Failed samples: %d, %d, %d, %d, %d", out[0], out[1], out[2], out[3], out[4]);
     ROS_INFO("[RRTXPlanner] Bounding boxes of all the valid samples: (%u, %u) - (%u, %u)", min_x, min_y, max_x, max_y);
 
+    buildTreeMarker();
+
     if (!isConnected(sx, sy)) {
         ROS_WARN("[RRTXPlanner] Failed to find a path to the goal within max iterations.");
         return false;
@@ -287,7 +289,7 @@ bool RRTXPlanner::makePlan(
     // Find the node closest to our current start position to begin tracing
     // Or should we use the start proxy calculated initially
     std::size_t current_idx = findStartProxy();
-    
+
     if (current_idx == Node::INVALID_IDX) {
         ROS_ERROR("[RRTXPlanner] Start proxy is invalid despite tree being connected.");
         return false;
@@ -345,7 +347,6 @@ bool RRTXPlanner::makePlan(
     double path_len = computePathLength(plan);
     ROS_INFO("[RRTXPlanner] Successfully extracted path with %zu waypoints,\tPath length: %.3f m,\tPlanning time: %.3f ms", plan.size(), path_len, (ros::Time::now() - start_time).toSec() * 1000);
 
-    buildTreeMarker();
     
     return true;
 }
@@ -1102,6 +1103,8 @@ void RRTXPlanner::buildTreeMarker(const std::string& frame_id) {
             st.push(child);
         }
     }
+
+    ROS_INFO("[RRTXPlanner] Number of points reachable by goal node: %zu", marker.points.size());
 
     tree_pub_.publish(marker);
 }
