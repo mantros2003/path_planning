@@ -101,6 +101,8 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         unsigned int height_c_, width_c_;       // Map width in number of cells
         double origin_x, origin_y;
         double resolution_;                     // Sizde of each cell
+        unsigned int sampling_min_x_, sampling_max_x_;
+        unsigned int sampling_min_y_, sampling_max_y_;
         double radius_;                         // The radius for neighborhood search
         std::vector<uint8_t> costmap_snapshot_; // Holds the last known values of the costmap
         std::vector<unsigned int> obstacles_;   // Indices of obstacles in the costmap

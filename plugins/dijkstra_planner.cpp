@@ -130,7 +130,7 @@ bool DijkstraPlanner::makePlan(
 
     ROS_INFO("Made a path with %ld points", plan.size());
     double path_len = computePathLengthD(plan);
-    ROS_INFO("[RRTXPlanner] Successfully extracted path with %zu waypoints,\tPath length: %.3f m,\tPlanning time: %.3f ms", plan.size(), path_len, (ros::Time::now() - start_time).toSec() * 1000);
+    ROS_INFO("[DijkstraPlanner] Successfully extracted path with %zu waypoints,\tPath length: %.3f m,\tPlanning time: %.3f ms", plan.size(), path_len, (ros::Time::now() - start_time).toSec() * 1000);
 
     return true;
 }

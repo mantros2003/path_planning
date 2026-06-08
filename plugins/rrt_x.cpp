@@ -63,9 +63,26 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
 
         _buildFreeCellList();
 
+        ros::NodeHandle private_nh("~/" + name);
+
+        int min_x, min_y, max_x, max_y;
+
+        private_nh.param<int>("sampling_min_x", min_x, 0);
+        private_nh.param<int>("sampling_max_x", max_x, width_c_);
+        private_nh.param<int>("sampling_min_y", min_y, 0);
+        private_nh.param<int>("sampling_max_y", max_y, height_c_);
+
+        sampling_min_x_ = min_x;
+        sampling_max_x_ = max_x;
+        sampling_min_y_ = min_y;
+        sampling_max_y_ = max_y;
+
+        ROS_INFO("[RRTXPlanner] has_param_1: %d\t has_param_2: %d\t has_param_3: %d\t has_param_4: %d\t", private_nh.hasParam("sampling_min_x"), private_nh.hasParam("sampling_max_x"), private_nh.hasParam("sampling_min_y"), private_nh.hasParam("sampling_max_y"));
+
         initialized_ = true;
 
         ROS_INFO("[RRTXPlanner] Initialized RRTX planner with map of size %fm * %fm", height_m_, width_m_);
+        ROS_INFO("[RRTXPlanner] Origin: (%f, %f), Resolution: %f", origin_x, origin_y, resolution_);
     } else {
         ROS_WARN("[RRTXPlanner] This node has already been initialized...");
     }
@@ -964,8 +981,8 @@ std::pair<double, double> RRTXPlanner::samplePoint() {
 void RRTXPlanner::_buildFreeCellList() {
     free_cells.clear();
 
-    for (unsigned int y = 140; y < 260; y++) {
-        for (unsigned int x = 140; x < 260; x++) {
+    for (unsigned int y = sampling_min_y_; y <= sampling_max_y_; y++) {
+        for (unsigned int x = sampling_min_x_; x < sampling_max_x_; x++) {
             if (costmap_->getCost(x, y) < obstacle_cost_threshold_) free_cells.emplace_back(x, y);
         }
     }
