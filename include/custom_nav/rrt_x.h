@@ -167,6 +167,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         void _buildFreeCellList();
         double squaredDistance(const std::size_t, const std::size_t) const;
         double distance(const std::size_t, const std::size_t) const;
+        void buildTreeMarker(const std::string& frame_id = "map");
 };
 
 } // namespace custom_planner

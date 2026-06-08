@@ -344,6 +344,8 @@ bool RRTXPlanner::makePlan(
     planned_ = true;
     double path_len = computePathLength(plan);
     ROS_INFO("[RRTXPlanner] Successfully extracted path with %zu waypoints,\tPath length: %.3f m,\tPlanning time: %.3f ms", plan.size(), path_len, (ros::Time::now() - start_time).toSec() * 1000);
+
+    buildTreeMarker();
     
     return true;
 }
@@ -1047,7 +1049,7 @@ double RRTXPlanner::distance(const std::size_t node_idx1, const std::size_t node
 /**
  * Sends a visualization message to visualize the tree in Rviz
  */
-void buildTreeMarker(const std::string& frame_id = "map") {
+void RRTXPlanner::buildTreeMarker(const std::string& frame_id) {
     visualization_msgs::Marker marker;
 
     marker.header.frame_id = frame_id;
@@ -1062,7 +1064,7 @@ void buildTreeMarker(const std::string& frame_id = "map") {
     marker.pose.orientation.w = 1.0;
 
     // line width
-    marker.scale.x = 0.02;
+    marker.scale.x = 0.01;
 
     // green
     marker.color.r = 0.0;
@@ -1070,26 +1072,28 @@ void buildTreeMarker(const std::string& frame_id = "map") {
     marker.color.b = 0.0;
     marker.color.a = 1.0;
 
-    if (nodes_.empty()) return marker;
+    if (nodes_.empty()) tree_pub_.publish(marker);
 
-    std::stack<Node&> st;
-    st.push(nodes_[0]);
+    std::stack<Node*> st;
+    st.push(&nodes_[0]);
 
     while (!st.empty())
     {
-        Node& parent = st.top();
+        Node* parent = st.top();
         st.pop();
 
-        for (Node& child : parent.children)
+        for (std::size_t child_idx : parent->children)
         {
+            Node* child = &nodes_[child_idx];
+
             geometry_msgs::Point p1;
-            p1.x = parent.x;
-            p1.y = parent.y;
+            p1.x = parent->x;
+            p1.y = parent->y;
             p1.z = 0.05;
 
             geometry_msgs::Point p2;
-            p2.x = child.x;
-            p2.y = child.y;
+            p2.x = child->x;
+            p2.y = child->y;
             p2.z = 0.05;
 
             marker.points.push_back(p1);
