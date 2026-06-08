@@ -22,6 +22,9 @@ inline double distance(T x1, T y1, T x2, T y2) {
 
 // Made point into a generic struct with flexible dimensionality
 // Point has D elements of type T
+/**
+ * Generic point with coordinates of type T and dimensionality D
+ */
 template <typename T, std::size_t D>
 struct Point {
     // Array to hold D coordinates of type T

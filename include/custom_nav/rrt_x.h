@@ -137,6 +137,9 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         std::set<QKey> queue_;
         std::unordered_map<std::size_t, QKey> queueMap_;
 
+        // Publisher for visualization messages
+        ros::Publisher tree_pub_;
+
         // Functions
         void reduceInconsistency();
         void rewireNeighbors(std::size_t);

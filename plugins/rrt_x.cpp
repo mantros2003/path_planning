@@ -2,12 +2,15 @@
 #include <custom_nav/kd_tree_x.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/line_iterator.h>
+#include <visualization_msgs/Marker.h>
+#include <geometry_msgs/Point.h>
 #include <iostream>
 #include <cstdint>
 #include <cstdlib>
 #include <random>
 #include <cmath>
 #include <algorithm>
+#include <stack>
 #include <boost/stacktrace.hpp>
 
 #define INF 1e9
@@ -55,6 +58,7 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         origin_x = costmap_->getOriginX();
         origin_y = costmap_->getOriginY();
         resolution_ = costmap_->getResolution();
+        goal_ = Point<double, 2>{origin_x, origin_y};
 
         // Initialize the costmap snapshot
         // const unsigned int N = width_c_ * height_c_;
@@ -83,6 +87,10 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
 
         ROS_INFO("[RRTXPlanner] Initialized RRTX planner with map of size %fm * %fm", height_m_, width_m_);
         ROS_INFO("[RRTXPlanner] Origin: (%f, %f), Resolution: %f", origin_x, origin_y, resolution_);
+
+        tree_pub_ = private_nh.advertise<visualization_msgs::Marker>(
+            "search_tree", 1, true
+        );
     } else {
         ROS_WARN("[RRTXPlanner] This node has already been initialized...");
     }
@@ -129,8 +137,8 @@ bool RRTXPlanner::makePlan(
     }
     
     // Modify the global variables
-    start_ = Point<double, 2>({sx, sy});
     goal_ = Point<double, 2>({gx, gy});
+    start_ = Point<double, 2>({sx, sy});
 
     // Check if obstacles have changed and update the queues
     if (nodes_.size() > 1) {
@@ -541,7 +549,7 @@ void RRTXPlanner::updateObstacles() {
     if (!newly_cleared.empty()) {
         for (unsigned int i: newly_cleared) {
             removeObstacle(i);
-            if (i==0) ROS_WARN("[RRTXPlanner] Removing root from obstacles");
+            // if (i==0) ROS_WARN("[RRTXPlanner] Removing root from obstacles");
             // std::cout << i << ' ';
         }
         reduceInconsistency();
@@ -553,7 +561,7 @@ void RRTXPlanner::updateObstacles() {
     if (!newly_blocked.empty()) {
         for (unsigned int i: newly_blocked) {
             addObstacle(i);
-            if (i == 0) ROS_WARN("[RRTXPlanner] Adding root as obstacle");
+            // if (i == 0) ROS_WARN("[RRTXPlanner] Adding root as obstacle");
             // std::cout << i << ' ';
         }
         propogateDescendents();
@@ -1034,6 +1042,64 @@ double RRTXPlanner::distance(const std::size_t node_idx1, const std::size_t node
     double dy = node1.y - nodes_[node_idx2].y;
 
     return std::hypot(dx, dy);
+}
+
+/**
+ * Sends a visualization message to visualize the tree in Rviz
+ */
+void buildTreeMarker(const std::string& frame_id = "map") {
+    visualization_msgs::Marker marker;
+
+    marker.header.frame_id = frame_id;
+    marker.header.stamp = ros::Time::now();
+
+    marker.ns = "search_tree";
+    marker.id = 0;
+
+    marker.type = visualization_msgs::Marker::LINE_LIST;
+    marker.action = visualization_msgs::Marker::ADD;
+
+    marker.pose.orientation.w = 1.0;
+
+    // line width
+    marker.scale.x = 0.02;
+
+    // green
+    marker.color.r = 0.0;
+    marker.color.g = 1.0;
+    marker.color.b = 0.0;
+    marker.color.a = 1.0;
+
+    if (nodes_.empty()) return marker;
+
+    std::stack<Node&> st;
+    st.push(nodes_[0]);
+
+    while (!st.empty())
+    {
+        Node& parent = st.top();
+        st.pop();
+
+        for (Node& child : parent.children)
+        {
+            geometry_msgs::Point p1;
+            p1.x = parent.x;
+            p1.y = parent.y;
+            p1.z = 0.05;
+
+            geometry_msgs::Point p2;
+            p2.x = child.x;
+            p2.y = child.y;
+            p2.z = 0.05;
+
+            marker.points.push_back(p1);
+            marker.points.push_back(p2);
+
+            st.push(child);
+        }
+    }
+
+    tree_pub_.publish(marker);
 }
 
 }
