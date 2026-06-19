@@ -1,5 +1,5 @@
-#ifndef KD_TREE_X_H
-#define KD_TREE_X_H
+#ifndef KD_TREE_X_H_
+#define KD_TREE_X_H_
 
 #include <vector>
 #include <cmath>
@@ -7,18 +7,6 @@
 #include <random>
 #include <chrono>
 #include <limits>
-
-template <typename T>
-inline double squared_dist(T x1, T y1, T x2, T y2) {
-    double dx = static_cast<double>(x1) - static_cast<double>(x2);
-    double dy = static_cast<double>(y1) - static_cast<double>(y2);
-    return dx * dx + dy * dy;
-}
-
-template <typename T>
-inline double distance(T x1, T y1, T x2, T y2) {
-    return std::sqrt(squared_dist(x1, y1, x2, y2));
-}
 
 // Made point into a generic struct with flexible dimensionality
 // Point has D elements of type T

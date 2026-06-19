@@ -1,5 +1,5 @@
 #include <custom_nav/rrt_x.h>
-#include <custom_nav/kd_tree_x.h>
+#include <custom_nav/utils.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/line_iterator.h>
 #include <visualization_msgs/Marker.h>
@@ -23,41 +23,18 @@ PLUGINLIB_EXPORT_CLASS(
 
 namespace custom_planner {
 
-/**
- * Helper function to compute the path length of the generated path
- */
-double computePathLength(
-    const std::vector<geometry_msgs::PoseStamped>& plan)
-{
-    if (plan.size() < 2)
-        return 0.0;
-
-    double total_length = 0.0;
-
-    for (std::size_t i = 1; i < plan.size(); ++i) {
-        double dx = plan[i].pose.position.x -
-                    plan[i-1].pose.position.x;
-
-        double dy = plan[i].pose.position.y -
-                    plan[i-1].pose.position.y;
-
-        total_length += std::hypot(dx, dy);
-    }
-
-    return total_length;
-}
-
 // Function to initialize and store the costmap info once.
 void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
     if (!initialized_) {
-        costmap_ = costmap_ros->getCostmap();
-        height_m_ = costmap_->getSizeInMetersY();
-        width_m_ = costmap_->getSizeInMetersX();
-        height_c_ = costmap_->getSizeInCellsY();
-        width_c_ = costmap_->getSizeInCellsX();
-        origin_x = costmap_->getOriginX();
-        origin_y = costmap_->getOriginY();
+        costmap_    = costmap_ros->getCostmap();
+        height_m_   = costmap_->getSizeInMetersY();
+        width_m_    = costmap_->getSizeInMetersX();
+        height_c_   = costmap_->getSizeInCellsY();
+        width_c_    = costmap_->getSizeInCellsX();
+        origin_x    = costmap_->getOriginX();
+        origin_y    = costmap_->getOriginY();
         resolution_ = costmap_->getResolution();
+
         goal_ = Point<double, 2>{origin_x, origin_y};
 
         // Initialize the costmap snapshot
@@ -155,6 +132,9 @@ bool RRTXPlanner::makePlan(
      * The costmap has much more area than only the mapped region
      * To solve this issue, we can precompute the free cells and sample from them
      * We can then update this on runtime
+     * UPDATE: The cells that are outside the main area have cost 0, so the above method does not work
+     * We have to manually input the bounds of the area
+     * Introduced sampling bounds that are input by the programmer
      */
     int total_samples = 0;
     int out[5] = {0, 0, 0, 0, 0};
@@ -162,12 +142,14 @@ bool RRTXPlanner::makePlan(
     unsigned int min_x = 1000, min_y = 1000;
     unsigned int max_x = 0, max_y = 0;
     // Modify it so that it only samples node initially, remove the second loop condition
-    while ((!planned_ && iters < max_iters_) || (isConnected(sx, sy) && iters < 5))
+    // while ((!planned_ && iters < max_iters_) || (isConnected(sx, sy) && iters < 5))
     // while ((!isConnected(sx, sy) && iters < max_iters_) || iters < 1)
+    while (!planned_ && (iters < max_iters))
     {
         // double x = origin_x + (rand01(rng) * width_m_);
         // double y = origin_y + (rand01(rng) * height_m_);
 
+        // Sample a random point from the map
         double x, y;
         std::pair<double, double> sampled_pt = samplePoint();
         x = sampled_pt.first;
@@ -175,6 +157,7 @@ bool RRTXPlanner::makePlan(
 
         total_samples++;
 
+        // First we convert to map/grid coordinates, then check if it is occupied
         unsigned int mx, my;
         if (!costmap_->worldToMap(x, y, mx, my)) {
             out[0]++;
@@ -190,7 +173,7 @@ bool RRTXPlanner::makePlan(
         // Get the point nearest to the ranomly selected point
         std::size_t nearest_index = kd_tree.nearest(random_pt);
         Node& near_node = nodes_[nearest_index];
-        Point<double, 2> near_pt({near_node.x, near_node.y});
+        Point<double, 2> near_pt{near_node.x, near_node.y};
 
         // Move in the direction of the random point from the near point
         Point<double, 2> new_pt = steer(near_pt[0], near_pt[1], random_pt[0], random_pt[1]);
@@ -200,7 +183,7 @@ bool RRTXPlanner::makePlan(
             out[2]++;
             continue;
         }
-        // Check if hte new point is near an obstacle
+        // Check if the new point is near an obstacle
         if (costmap_->getCost(mx, my) >= obstacle_cost_threshold_) {
             out[3]++;
             continue;
@@ -220,55 +203,18 @@ bool RRTXPlanner::makePlan(
         Node new_node(new_pt[0], new_pt[1]);
         std::size_t new_idx = nodes_.size(); // It will be inserted at this index
 
+        bool is_inserted = addPointToTree(new_pt, nearest_index);
 
-        // Find neighbors within radius
-        std::vector<std::size_t> neighbors = kd_tree.radius_search(new_pt, radius_);
+        if (is_inserted) {
+            radius_ = getRadius();
 
-        // Find best parent
-        double min_cost = near_node.g + new_pt.distance(near_pt);
-        std::size_t best_parent = nearest_index;
+            rewireNeighbors(new_idx);
+            // In the Julia implementation by Otte, new node was explicitly added to the heap
+            verifyQueue(new_idx);
+            reduceInconsistency();
 
-        // In this loop, we iterate through all the neighbours
-        // and populate the neighbours lists, and find the best parent
-        for (std::size_t nbr_idx : neighbors) {
-            Node& nbr = nodes_[nbr_idx];
-            Point<double, 2> nbr_pt({nbr.x, nbr.y});
-            
-            // Check edge validity
-            if (!hasObstacle(nbr_pt, new_pt)) {
-                // Populate new node's neighbor lists
-                new_node.nbr_init.push_back(nbr_idx);
-                new_node.nbr_running.push_back(nbr_idx);
-                
-                nbr.nbr_init.push_back(new_idx);
-                nbr.nbr_running.push_back(new_idx);
-
-                double cost = nbr.g + new_pt.distance(nbr_pt);
-                if (cost < min_cost) {
-                    min_cost = cost;
-                    best_parent = nbr_idx;
-                }
-            }
+            iters++;
         }
-
-        new_node.par_idx = best_parent;
-        new_node.lmc = min_cost;
-        new_node.g = std::numeric_limits<double>::infinity();   // Keeping it inf so that rewiring happens
-        
-        // Add to tree
-        // Update the tree insert function to support adding indices
-        nodes_.push_back(new_node);
-        kd_tree.insert(new_pt, new_idx);
-        nodes_[best_parent].children.push_back(new_idx);
-
-        radius_ = getRadius();
-
-        rewireNeighbors(new_idx);
-        // In the Julia implementation by Otte, new node was explicitly added to the heap
-        verifyQueue(new_idx);
-        reduceInconsistency();
-
-        iters++;
     }
 
     ROS_INFO("[RRTXPlanner] Our graph has %zu nodes", nodes_.size());
@@ -276,13 +222,66 @@ bool RRTXPlanner::makePlan(
     ROS_INFO("[RRTXPlanner] Failed samples: %d, %d, %d, %d, %d", out[0], out[1], out[2], out[3], out[4]);
     ROS_INFO("[RRTXPlanner] Bounding boxes of all the valid samples: (%u, %u) - (%u, %u)", min_x, min_y, max_x, max_y);
 
+    #ifdef _VIS_RRTX_TREE
     buildTreeMarker();
+    #endif
 
     if (!isConnected(sx, sy)) {
         ROS_WARN("[RRTXPlanner] Failed to find a path to the goal within max iterations.");
         return false;
     }
 
+    return extractPath(goal, plan);
+}
+
+/* Adds a new point to the tree */
+bool RRTXPlanner::addPointToTree(Point<double, 2> p, std::size_t near_idx) {
+    this->nodes_.emplace_back(p[0], p[1]);
+    Node& new_node = this->nodes_.back();
+
+    Node& near_node = this->nodes_[near_idx];
+
+    // Get all points close to the node
+    std::vector<std::size_t> neighbors = this->kd_tree.radius_search(p, radius_);
+
+    // Find parent, node that has the least cost
+    for (std::size_t nbr_idx: neighbors) {
+        Node& nbr = this->nodes_[nbr_idx];
+
+        if (!hasObstacle(p[0], p[1], nbr.x, nbr.y)) {
+            new_node.nbr_init.push_back(nbr_idx);
+            new_node.nbr_running.push_back(nbr_idx);
+
+            nbr.nbr_running.push_back(this->nodes_.size() - 1);
+
+            double cost = nbr.lmc + utils::distance<double>(nbr.x, nbr.y, p[0], p[1]);
+            if (cost < new_node.lmc) {
+                new_node.lmc = cost;
+                new_node.par_idx = nbr_idx;
+            }
+        }
+    }
+
+    // We have iterated over all the nodes that were within radius_ of the new node
+    // If we have not been able to find a parent, we do not add the node
+    if (new_node.par_idx == Node::INVALID_IDX) {
+        this->nodes_.pop_back();
+        return false;
+    }
+
+    // Add to the parents children list and to the kd tree
+    this->nodes_[new_node.par_idx].children.push_back(this->nodes_.size() - 1);
+    this->kd_tree.insert(p, this->nodes_.size() - 1);
+
+    this->radius_ = getRadius();
+
+    return true;
+}
+
+bool RRTXPlanner::extractPath(
+    const geometry_msgs::PoseStamped& goal,
+    std::vector<geometry_msgs::PoseStamped>& plan
+) {
     // Clear any old path data
     plan.clear();
 
@@ -298,9 +297,9 @@ bool RRTXPlanner::makePlan(
     // Add the exact starting pose so the local planner has a smooth beginning
     plan.push_back(start);
 
-    // Trace the tree from the start proxy up to the goal root
     std::size_t loop_safety_counter = 0;
     
+    // Trace the tree from the start proxy up to the goal root
     while (current_idx != Node::INVALID_IDX) {
         const Node& curr_node = nodes_[current_idx];
 
@@ -343,10 +342,9 @@ bool RRTXPlanner::makePlan(
     // Add the exact goal pose for precise final positioning
     plan.push_back(goal);
 
-    planned_ = true;
-    double path_len = computePathLength(plan);
+    this->planned_ = true;
+    double path_len = utils::computePathLength(plan);
     ROS_INFO("[RRTXPlanner] Successfully extracted path with %zu waypoints,\tPath length: %.3f m,\tPlanning time: %.3f ms", plan.size(), path_len, (ros::Time::now() - start_time).toSec() * 1000);
-
     
     return true;
 }
@@ -448,7 +446,7 @@ void RRTXPlanner::cullNeighbors(std::size_t node_idx) {
                 Node& nbr = nodes_[nbr_idx];
 
                 // If the neighbor is now outside the shrinking radius
-                if (::distance(node.x, node.y, nbr.x, nbr.y) > radius_) {
+                if (utils::distance<double>(node.x, node.y, nbr.x, nbr.y) > radius_) {
                     // Remove 'node_idx' from the neighbor's running list as well
                     nbr.nbr_running.erase(
                         std::remove(nbr.nbr_running.begin(), nbr.nbr_running.end(), node_idx),
@@ -765,13 +763,18 @@ bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
  * Checks if there is an obstacle between p1 and p2
  */
 bool RRTXPlanner::hasObstacle(Point<double, 2> p1, Point<double, 2> p2) {
+    return hasObstacle(p1[0], p1[1], p2[0], p2[1]);
+}
+
+/* Checks if there is an obstacle between (x1, y1) and (x2, y2) */
+bool RRTXPlanner::hasObstacle(double x1, double y1, double x2, double y2) {
     unsigned int start, end;
     unsigned int mx, my;
 
-    if (!costmap_->worldToMap(p1[0], p1[1], mx, my)) return true;
+    if (!costmap_->worldToMap(x1, y1, mx, my)) return true;
     start = costmap_->getIndex(mx, my);
 
-    if (!costmap_->worldToMap(p2[0], p2[1], mx, my)) return true;
+    if (!costmap_->worldToMap(x2, y2, mx, my)) return true;
     end = costmap_->getIndex(mx, my);
 
     return hasObstacle(start, end);

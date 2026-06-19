@@ -1,12 +1,14 @@
 #ifndef CUSTOM_NAV_RRTX_PLANNER_H
 #define CUSTOM_NAV_RRTX_PLANNER_H
 
+#ifdef __linux__
 #include <ros/ros.h>
 #include <costmap_2d/costmap_2d.h>
 #include <costmap_2d/costmap_2d_ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_core/base_global_planner.h>
 #include <nav_msgs/Path.h>
+#endif
 
 #include <custom_nav/kd_tree_x.h>
 
@@ -17,9 +19,9 @@
 #include <random>
 #include <limits>
 
-namespace custom_planner {
+#define _VIS_RRTX_TREE
 
-double computePathLength(const std::vector<geometry_msgs::PoseStamped>&);
+namespace custom_planner {
 
 /**
  * Structure to store the information needed for the RRTx algorithm
@@ -141,6 +143,8 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         ros::Publisher tree_pub_;
 
         // Functions
+        bool addPointToTree(Point<double, 2>, std::size_t);
+        bool extractPath(const geometry_msgs::PoseStamped&, std::vector<geometry_msgs::PoseStamped>&);
         void reduceInconsistency();
         void rewireNeighbors(std::size_t);
         void cullNeighbors(std::size_t);
