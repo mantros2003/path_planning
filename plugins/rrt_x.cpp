@@ -754,7 +754,7 @@ bool RRTXPlanner::isConnected(double sx, double sy) {
 bool RRTXPlanner::hasObstacle(unsigned int start, unsigned int end) {
     int sx = start % width_c_, sy = start / width_c_, gx = end % width_c_, gy = end / width_c_;
     for (base_local_planner::LineIterator line(sx, sy, gx, gy); line.isValid(); line.advance()) {
-        if (costmap_->getCost(line.getX(), line.getY()) >= this.obstacle_cost_threshold_) return true;
+        if (costmap_->getCost(line.getX(), line.getY()) >= this->obstacle_cost_threshold_) return true;
     }
     return false;
 }
