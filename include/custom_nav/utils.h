@@ -2,8 +2,10 @@
 #define UTILS_H_
 
 #ifdef __linux__
-#include <geometry_msgs/Point.h>
+#include <geometry_msgs/PoseStamped.h>
 #endif
+#include <vector>
+#include <cmath>
 
 namespace utils {
 
@@ -11,26 +13,7 @@ namespace utils {
 /**
  * Helper function to compute the path length of the generated path
  */
-double computePathLength(
-    const std::vector<geometry_msgs::PoseStamped>& plan)
-{
-    if (plan.size() < 2)
-        return 0.0;
-
-    double total_length = 0.0;
-
-    for (std::size_t i = 1; i < plan.size(); ++i) {
-        double dx = plan[i].pose.position.x -
-                    plan[i-1].pose.position.x;
-
-        double dy = plan[i].pose.position.y -
-                    plan[i-1].pose.position.y;
-
-        total_length += std::hypot(dx, dy);
-    }
-
-    return total_length;
-}
+double computePathLength(const std::vector<geometry_msgs::PoseStamped>&);
 #endif
 
 /* Generic function to calculate the square of euclidean distance between points */

@@ -144,7 +144,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
 
         // Functions
         bool addPointToTree(Point<double, 2>, std::size_t);
-        bool extractPath(const geometry_msgs::PoseStamped&, std::vector<geometry_msgs::PoseStamped>&);
+        bool extractPath(const geometry_msgs::PoseStamped&, const geometry_msgs::PoseStamped&, std::vector<geometry_msgs::PoseStamped>&, ros::Time);
         void reduceInconsistency();
         void rewireNeighbors(std::size_t);
         void cullNeighbors(std::size_t);
@@ -158,6 +158,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         bool isConnected(double, double);
         bool hasObstacle(unsigned int, unsigned int);
         bool hasObstacle(Point<double, 2>, Point<double, 2>);
+        bool hasObstacle(double, double, double, double);
         double getRadius() const;
         std::size_t findStartProxy();
         void propogateDescendents();

@@ -144,7 +144,7 @@ bool RRTXPlanner::makePlan(
     // Modify it so that it only samples node initially, remove the second loop condition
     // while ((!planned_ && iters < max_iters_) || (isConnected(sx, sy) && iters < 5))
     // while ((!isConnected(sx, sy) && iters < max_iters_) || iters < 1)
-    while (!planned_ && (iters < max_iters))
+    while (!planned_ && (iters < max_iters_))
     {
         // double x = origin_x + (rand01(rng) * width_m_);
         // double y = origin_y + (rand01(rng) * height_m_);
@@ -231,7 +231,7 @@ bool RRTXPlanner::makePlan(
         return false;
     }
 
-    return extractPath(goal, plan);
+    return extractPath(start, goal, plan, start_time);
 }
 
 /* Adds a new point to the tree */
@@ -279,8 +279,10 @@ bool RRTXPlanner::addPointToTree(Point<double, 2> p, std::size_t near_idx) {
 }
 
 bool RRTXPlanner::extractPath(
+    const geometry_msgs::PoseStamped& start,
     const geometry_msgs::PoseStamped& goal,
-    std::vector<geometry_msgs::PoseStamped>& plan
+    std::vector<geometry_msgs::PoseStamped>& plan,
+    ros::Time start_time
 ) {
     // Clear any old path data
     plan.clear();
@@ -689,7 +691,7 @@ Point<double, 2> RRTXPlanner::steer(double near_x, double near_y, double rand_x,
 
     double dx = rand_x - near_x;
     double dy = rand_y - near_y;
-    double len = ::distance(near_x, near_y, rand_x, rand_y);
+    double len = utils::distance<double>(near_x, near_y, rand_x, rand_y);
 
     if (len <= step_length_) return Point<double, 2>({rand_x, rand_y});
 

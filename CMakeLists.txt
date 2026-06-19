@@ -143,6 +143,7 @@ target_link_libraries(kd_tree_lib
 )
 
 add_library(custom_planner_lib
+    src/utils.cpp
     plugins/dijkstra_planner.cpp
     plugins/a_star.cpp
     plugins/rrt.cpp
