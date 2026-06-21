@@ -133,7 +133,7 @@ bool RRTXPlanner::makePlan(
      * We have to manually input the bounds of the area
      * Introduced sampling bounds that are input by the programmer
      */
-    if (planned_) ROS_INFO("[RRTXPlanner] Replanning")
+    if (planned_) ROS_INFO("[RRTXPlanner] Replanning");
     int total_samples = 0;
     int out[5] = {0, 0, 0, 0, 0};
 
