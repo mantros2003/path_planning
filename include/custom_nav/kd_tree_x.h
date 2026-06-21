@@ -58,10 +58,13 @@ template <typename T, std::size_t D>
 class kdTree {
 public:
     kdTree() : root(-1) {}
+    kdTree(std::size_t capacity) : root(-1) {
+        nodes.reserve(capacity);
+    }
 
-    void insert(Point<T, D> p, std::size_t index);
-    std::size_t nearest(Point<T, D> p);
-    std::vector<std::size_t> radius_search(Point<T, D> p, double radius);
+    void insert(const Point<T, D>& p, std::size_t index);
+    std::size_t nearest(const Point<T, D>& p);
+    std::vector<std::size_t> radius_search(const Point<T, D>& p, double radius);
     void clear();
 
 private:
@@ -69,9 +72,9 @@ private:
     std::vector<kdTreeNode<T, D>> nodes;
 
     // Helper functions use unsigned int for depth tracking
-    void _insert(int node_idx, std::size_t index, Point<T, D> p, std::size_t depth);
-    void _nearest(int node_idx, Point<T, D> p, std::size_t depth, int& best_idx, double& min_dist_sq);
-    void _radius_search(int node_idx, Point<T, D> p, double sq_radius, std::size_t depth, std::vector<std::size_t>& result);
+    void _insert(int node_idx, std::size_t index, const Point<T, D>& p, std::size_t depth);
+    void _nearest(int node_idx, const Point<T, D>& p, std::size_t depth, int& best_idx, double& min_dist_sq);
+    void _radius_search(int node_idx, const Point<T, D>& p, double sq_radius, std::size_t depth, std::vector<std::size_t>& result);
 };
 
 /**
@@ -79,7 +82,7 @@ private:
  * Internally calls the recursive insert function
  */
 template <typename T, std::size_t D>
-void kdTree<T, D>::insert(Point<T, D> p, std::size_t index) {
+void kdTree<T, D>::insert(const Point<T, D>& p, std::size_t index) {
     if (root == -1 || nodes.size() == 0) {
         nodes.clear();
         nodes.emplace_back(p, index);
@@ -94,7 +97,7 @@ void kdTree<T, D>::insert(Point<T, D> p, std::size_t index) {
  * If no point found, returns a special point
  */
 template <typename T, std::size_t D>
-std::size_t kdTree<T, D>::nearest(Point<T, D> p) {
+std::size_t kdTree<T, D>::nearest(const Point<T, D>& p) {
     std::size_t point_not_found = std::numeric_limits<std::size_t>::max();
 
     if (root == -1) return point_not_found;
@@ -111,7 +114,7 @@ std::size_t kdTree<T, D>::nearest(Point<T, D> p) {
  * Returns all the points that are within raius of p
  */
 template <typename T, std::size_t D>
-std::vector<std::size_t> kdTree<T, D>::radius_search(Point<T, D> p, double radius) {
+std::vector<std::size_t> kdTree<T, D>::radius_search(const Point<T, D>& p, double radius) {
     std::vector<std::size_t> result;
     if (root != -1) {
         _radius_search(root, p, radius * radius, 0, result);
@@ -121,7 +124,7 @@ std::vector<std::size_t> kdTree<T, D>::radius_search(Point<T, D> p, double radiu
 
 // Internal recursive insert function
 template <typename T, std::size_t D>
-void kdTree<T, D>::_insert(int root, std::size_t index, Point<T, D> p, std::size_t depth) {
+void kdTree<T, D>::_insert(int root, std::size_t index, const Point<T, D>& p, std::size_t depth) {
     std::size_t axis = depth % D;
 
     bool left = p[axis] < nodes[root].p[axis];
@@ -140,7 +143,7 @@ void kdTree<T, D>::_insert(int root, std::size_t index, Point<T, D> p, std::size
 
 // Internal recursive nns function
 template <typename T, std::size_t D>
-void kdTree<T, D>::_nearest(int root, Point<T, D> p, std::size_t depth, int& best_node, double& min_dist) {
+void kdTree<T, D>::_nearest(int root, const Point<T, D>& p, std::size_t depth, int& best_node, double& min_dist) {
     if (root == -1) return;
 
     // double d = squared_dist(nodes[root].p[0], nodes[root].p[1],
@@ -168,7 +171,7 @@ void kdTree<T, D>::_nearest(int root, Point<T, D> p, std::size_t depth, int& bes
 
 // Internal recursive radius search
 template <typename T, std::size_t D>
-void kdTree<T, D>::_radius_search(int node_idx, Point<T, D> p, double sq_radius, std::size_t depth, std::vector<std::size_t>& result) {
+void kdTree<T, D>::_radius_search(int node_idx, const Point<T, D>& p, double sq_radius, std::size_t depth, std::vector<std::size_t>& result) {
     if (node_idx == -1) return;
 
     double d_sq = nodes[node_idx].p.distanceSquared(p);

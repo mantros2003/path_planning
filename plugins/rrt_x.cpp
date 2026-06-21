@@ -11,9 +11,6 @@
 #include <cmath>
 #include <algorithm>
 #include <stack>
-#include <boost/stacktrace.hpp>
-
-#define INF 1e9
 
 // Register as ROS plugin
 PLUGINLIB_EXPORT_CLASS(
@@ -60,14 +57,14 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
 
         ROS_INFO("[RRTXPlanner] has_param_1: %d\t has_param_2: %d\t has_param_3: %d\t has_param_4: %d\t", private_nh.hasParam("sampling_min_x"), private_nh.hasParam("sampling_max_x"), private_nh.hasParam("sampling_min_y"), private_nh.hasParam("sampling_max_y"));
 
-        initialized_ = true;
-
         ROS_INFO("[RRTXPlanner] Initialized RRTX planner with map of size %fm * %fm", height_m_, width_m_);
         ROS_INFO("[RRTXPlanner] Origin: (%f, %f), Resolution: %f", origin_x, origin_y, resolution_);
-
+        
         tree_pub_ = private_nh.advertise<visualization_msgs::Marker>(
             "search_tree", 1, true
         );
+
+        initialized_ = true;
     } else {
         ROS_WARN("[RRTXPlanner] This node has already been initialized...");
     }
@@ -250,7 +247,6 @@ bool RRTXPlanner::addPointToTree(Point<double, 2> p, std::size_t near_idx) {
 
         if (!hasObstacle(p[0], p[1], nbr.x, nbr.y)) {
             new_node.nbr_init.push_back(nbr_idx);
-            new_node.nbr_running.push_back(nbr_idx);
 
             nbr.nbr_running.push_back(this->nodes_.size() - 1);
 
@@ -272,8 +268,6 @@ bool RRTXPlanner::addPointToTree(Point<double, 2> p, std::size_t near_idx) {
     // Add to the parents children list and to the kd tree
     this->nodes_[new_node.par_idx].children.push_back(this->nodes_.size() - 1);
     this->kd_tree.insert(p, this->nodes_.size() - 1);
-
-    this->radius_ = getRadius();
 
     return true;
 }
@@ -356,8 +350,25 @@ void RRTXPlanner::reduceInconsistency() {
     auto topKey = [&]() { return *queue_.begin(); };
 
     // Make key and extract the closest node to the current bot position
-    auto botKey = makeKey(start_proxy);
-    Node& bot = nodes_[start_proxy];
+    if (start_proxy == Node::INVALID_IDX) {
+        QKey botKey;
+        Node _bot;
+
+        double dist = 1.3 * utils::distance<double>(start_.x, start_.y, goal_.x, goal_.y);
+        botKey.k1 = dist;
+        botKey.k2 = dist;
+        botKey.index = 0;
+
+        _bot.x = start_.x; _bot.y = start_.y;
+        _bot.g = dist;
+        _bot.lmc = dist;
+        _bot.in_queue = false;
+
+        Node& bot = _bot;
+    } else {
+        auto botKey = makeKey(start_proxy);
+        Node& bot = nodes_[start_proxy];
+    }
 
     // Stop when the robot's proxy is consistent 
     // And all cheaper nodes have been processed.
@@ -386,7 +397,7 @@ void RRTXPlanner::reduceInconsistency() {
         v.g = v.lmc;
         
         // Update botKey just in case the proxy's cost changed during the loop
-        botKey = makeKey(start_proxy); 
+        if (start_proxy != Node::INVALID_IDX) botKey = makeKey(start_proxy);
     }
 }
 
@@ -400,39 +411,38 @@ void RRTXPlanner::rewireNeighbors(std::size_t v_index) {
 
     cullNeighbors(v_index);
 
-    // Check all the neighbors
-    for (std::size_t nbr_index: v.nbr_init) {
-        if (nbr_index == v.par_idx || nbr_index == 0) continue;
+    auto rewire = [&](const auto& neighbors) {
+        for (std::size_t nbr_index: neighbors) {
+            if (nbr_index == v.par_idx || nbr_index == 0) continue;
 
-        Node& nbr = nodes_[nbr_index];
-        double nbr_dist_via_v = v.lmc + distance(v_index, nbr_index);
+            Node& nbr = nodes_[nbr_index];
+            double nbr_dist_via_v = v.lmc + distance(v_index, nbr_index);
 
-        // If going through v is better
-        if (nbr_dist_via_v < nbr.lmc) {
-            // Remove from parent's children list
-            if (nbr.par_idx != Node::INVALID_IDX) {
-                Node& old_parent = nodes_[nbr.par_idx];
-                old_parent.children.erase(
-                    std::remove(old_parent.children.begin(), old_parent.children.end(), nbr_index),
-                    old_parent.children.end()
-                );
+            // If going through v is better
+            if (nbr_dist_via_v < nbr.lmc) {
+                // Remove from parent's children list
+                if (nbr.par_idx != Node::INVALID_IDX) {
+                    Node& old_parent = nodes_[nbr.par_idx];
+                    old_parent.children.erase(
+                        std::remove(old_parent.children.begin(), old_parent.children.end(), nbr_index),
+                        old_parent.children.end()
+                    );
+                }
+
+                // Link to new parent
+                nbr.par_idx = v_index;
+                v.children.push_back(nbr_index);
+
+                // Update lmc
+                nbr.lmc = nbr_dist_via_v;
+
+                if (nbr.g - nbr.lmc > epsilon_) verifyQueue(nbr_index);
             }
-
-            // Link to new parent
-            nbr.par_idx = v_index;
-            if (nbr_index == 0) {
-                ROS_WARN("[RRTxPlanner] Setting root's parent, g: %f\tlmc: %f", nbr.g, nbr.lmc);
-                std::cout << "[RRTXPlanner] Stack trace:" << '\n' << boost::stacktrace::stacktrace() << std::endl;
-                std::exit(1);
-            }
-            v.children.push_back(nbr_index);
-
-            // Update lmc
-            nbr.lmc = nbr_dist_via_v;
-
-            if (nbr.g - nbr.lmc > epsilon_) verifyQueue(nbr_index);
         }
     }
+
+    rewire(v.nbr_init);
+    rewire(v.nbr_running);
 }
 
 // TODO: Modify the implementations so that the neighbor lists are sorted
@@ -517,6 +527,10 @@ void RRTXPlanner::updateLMC(std::size_t v_idx) {
     v.lmc = min_cost;
 }
 
+/**
+ * Handles the change of obstacles
+ * Updates the set of obstacles, and handles them accordingly
+ */
 void RRTXPlanner::updateObstacles() {
     // Make two vectors to store the cells that have changed
     std::vector<unsigned int> newly_blocked;
@@ -550,11 +564,7 @@ void RRTXPlanner::updateObstacles() {
     // Handle removed obstacles
     ROS_INFO("Removing obstacles...");
     if (!newly_cleared.empty()) {
-        for (unsigned int i: newly_cleared) {
-            removeObstacle(i);
-            // if (i==0) ROS_WARN("[RRTXPlanner] Removing root from obstacles");
-            // std::cout << i << ' ';
-        }
+        for (unsigned int i: newly_cleared) removeObstacle(i);
         reduceInconsistency();
     }
     ROS_INFO("Completed.");
@@ -562,11 +572,7 @@ void RRTXPlanner::updateObstacles() {
     // Handle added obstacles
     ROS_INFO("Adding obstacles...");
     if (!newly_blocked.empty()) {
-        for (unsigned int i: newly_blocked) {
-            addObstacle(i);
-            // if (i == 0) ROS_WARN("[RRTXPlanner] Adding root as obstacle");
-            // std::cout << i << ' ';
-        }
+        for (unsigned int i: newly_blocked) addObstacle(i);
         propogateDescendents();
         verifyQueue(start_proxy);
         reduceInconsistency();
@@ -574,6 +580,10 @@ void RRTXPlanner::updateObstacles() {
     ROS_INFO("Completed.");
 }
 
+/**
+ * Removes obstacles
+ * Makes necessary changes to ensure the newly freed path is used
+ */
 void RRTXPlanner::removeObstacle(unsigned int i) {
     // Remove from global tracking
     auto it = std::find(obstacles_.begin(), obstacles_.end(), i);
@@ -621,6 +631,10 @@ void RRTXPlanner::removeObstacle(unsigned int i) {
     }
 }
 
+/**
+ * Adds cell with index i to the set of obstacles
+ * Further processes and orphans the nodes affected
+ */
 void RRTXPlanner::addObstacle(unsigned int i) {
     obstacles_.push_back(i);
 
@@ -650,36 +664,36 @@ void RRTXPlanner::addObstacle(unsigned int i) {
     //     }
     // };
 
+    auto process_neighbors = [&](const auto& neighbors, Node& v) {
+        for (std::size_t u_idx : neighbors) {
+            if (v.blocked_nbrs.count(u_idx) > 0) continue;
+
+            Node& u = nodes_[u_idx];
+
+            if (isEdgeInCollision(
+                    u.x, u.y, v.x, v.y,
+                    xmin, ymin, xmax, ymax
+                )) {
+
+                v.blocked_nbrs.insert(u_idx);
+                u.blocked_nbrs.insert(v_idx);
+
+                if (v.par_idx == u_idx) verifyOrphan(v_idx);
+                else if (u.par_idx == v_idx) verifyOrphan(u_idx);
+
+                // Can also add condition to stop the robot if the obstacle is in current path
+            }
+        }
+    };
+
     // Make the set of edges that intersect this obstacle
     // Get the points that are within step_length_ of the obstacle
     std::vector<std::size_t> possible_invalidated_points = kd_tree.radius_search(Point<double, 2>({xmin, ymin}), step_length_ + resolution_);
     for (std::size_t v_idx: possible_invalidated_points) {
         Node& v = nodes_[v_idx];
 
-        auto process_neighbors = [&](const auto& neighbors) {
-            for (std::size_t u_idx : neighbors) {
-                if (v.blocked_nbrs.count(u_idx) > 0)
-                    continue;
-
-                Node& u = nodes_[u_idx];
-
-                if (isEdgeInCollision(
-                        u.x, u.y, v.x, v.y,
-                        xmin, ymin, xmax, ymax)) {
-
-                    v.blocked_nbrs.insert(u_idx);
-                    u.blocked_nbrs.insert(v_idx);
-
-                    if (v.par_idx == u_idx) verifyOrphan(v_idx);
-                    else if (u.par_idx == v_idx) verifyOrphan(u_idx);
-
-                    // Can also add condition to stop the robot if the obstacle is in current path
-                }
-            }
-        };
-
-        process_neighbors(v.nbr_running);
-        process_neighbors(v.nbr_init);
+        process_neighbors(v.nbr_running, v);
+        process_neighbors(v.nbr_init, v);
     }
 }
 
@@ -701,7 +715,7 @@ Point<double, 2> RRTXPlanner::steer(double near_x, double near_y, double rand_x,
     return Point<double, 2>({new_x, new_y});
 }
 
-// Checks if the goal is changed
+/* Checks if the goal is changed */
 bool RRTXPlanner::isNewGoal(double gx, double gy) {
     return (gx != goal_[0]) || (gy != goal_[1]);
 }
@@ -734,10 +748,11 @@ bool RRTXPlanner::isConnected(double sx, double sy) {
     for (std::size_t idx: neighbors) {
         Node& n = nodes_[idx];
 
-        if (n.g >= std::numeric_limits<double>::infinity()) continue;
+        if (std::isinf(n.g)) continue;
 
-        Point<double, 2> n_pt({nodes_[idx].x, nodes_[idx].y});
+        Point<double, 2> n_pt({n.x, n.y});
         double distance_to_goal = n.lmc + n_pt.distance(start_pt);
+
         if (distance_to_goal <= min_distance) {
             min_distance = distance_to_goal;
             best_index = idx;
@@ -825,11 +840,14 @@ std::size_t RRTXPlanner::findStartProxy() {
 
     for (std::size_t nbr_idx : local_neighbors) {
         Node& nbr = nodes_[nbr_idx];
-        Point<double, 2> nbr_pt({nbr.x, nbr.y});
 
+        if (std::isinf(nbr.lmc)) continue;
+
+        Point<double, 2> nbr_pt({nbr.x, nbr.y});
         // Check if we have a clear path to this neighbor
         // And if we improve the previous cost
         double dist = nbr.lmc + start_.distance(nbr_pt);
+
         if (dist <= min_dist && !hasObstacle(start_, nbr_pt)) {
             min_dist = dist;
             best_visible_proxy = nbr_idx;
@@ -839,6 +857,10 @@ std::size_t RRTXPlanner::findStartProxy() {
     return best_visible_proxy;
 }
 
+/**
+ * Orphan all the nodes blocked by the obstacle
+ * And all their descendents
+ */
 void RRTXPlanner::propogateDescendents() {
     std::vector<std::size_t> processing_queue(orphan_set_.begin(), orphan_set_.end());
     std::size_t head = 0;

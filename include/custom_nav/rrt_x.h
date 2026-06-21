@@ -29,6 +29,7 @@ namespace custom_planner {
 struct Node {
     double x, y;
     std::size_t par_idx;
+    bool in_queue;  // Indicates if it is in the priority queue
 
     double g;       // Current estimate of cost-to-goal
     double lmc;     // Look ahead cost-to-goal
@@ -39,8 +40,6 @@ struct Node {
     std::vector<std::size_t> nbr_running;                           // Neighbors within r(|V|)
     std::set<std::size_t> blocked_nbrs;                             // Neighbors to whom distance is inf
     std::vector<std::size_t> children;
-
-    bool in_queue;  // Indicates if it is in the priority queue
 
     // To indicate invalid index
     static constexpr std::size_t INVALID_IDX = std::numeric_limits<std::size_t>::max();
@@ -79,13 +78,14 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         height_m_(0), width_m_(0), height_c_(0), width_c_(0),
         rad_const_(10.0),
         obstacle_cost_threshold_(50),
-        step_length_(0.2),       // Default edge length
-        goal_tolerance_(0.2),    // Default tolerance to reach goal
-        epsilon_(0.1),           // Default epsilon for collision checking/math
-        max_iters_(1500),       // Default maximum iterations before giving up
-        rng{dev()},              // Initialize the random number genera with the random device
-        rand01{0.0, 1.0},        // Initialize the distribution
-        radius_(0.3)
+        step_length_(0.2),          // Default edge length
+        goal_tolerance_(0.2),       // Default tolerance to reach goal
+        epsilon_(0.1),              // Default epsilon for collision checking/math
+        max_iters_(1500),           // Default maximum iterations before giving up
+        rng{dev()},                 // Initialize the random number genera with the random device
+        rand01{0.0, 1.0},           // Initialize the distribution
+        radius_(0.3),
+        start_proxy(Node::INVALID_IDX),
         {}
 
         void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
@@ -135,7 +135,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         // Global containers
         kdTree<double, 2> kd_tree;
 
-        // Containers for keeping track of 
+        // Containers for keeping track of inconsistent nodes
         std::set<QKey> queue_;
         std::unordered_map<std::size_t, QKey> queueMap_;
 
