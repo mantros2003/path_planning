@@ -77,7 +77,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         : costmap_(nullptr), initialized_(false), planned_(false),
         height_m_(0), width_m_(0), height_c_(0), width_c_(0),
         rad_const_(10.0),
-        obstacle_cost_threshold_(50),
+        obstacle_cost_threshold_(1),
         step_length_(0.2),          // Default edge length
         goal_tolerance_(0.2),       // Default tolerance to reach goal
         epsilon_(0.1),              // Default epsilon for collision checking/math
@@ -85,7 +85,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         rng{dev()},                 // Initialize the random number genera with the random device
         rand01{0.0, 1.0},           // Initialize the distribution
         radius_(0.3),
-        start_proxy(Node::INVALID_IDX),
+        start_proxy(Node::INVALID_IDX)
         {}
 
         void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);

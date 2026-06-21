@@ -350,33 +350,34 @@ void RRTXPlanner::reduceInconsistency() {
     auto topKey = [&]() { return *queue_.begin(); };
 
     // Make key and extract the closest node to the current bot position
+    QKey botKey;
+    Node* bot = nullptr;
     if (start_proxy == Node::INVALID_IDX) {
-        QKey botKey;
         Node _bot;
 
-        double dist = 1.3 * utils::distance<double>(start_.x, start_.y, goal_.x, goal_.y);
+        double dist = 1.3 * utils::distance<double>(start_[0], start_[1], goal_[0], goal_[1]);
         botKey.k1 = dist;
         botKey.k2 = dist;
         botKey.index = 0;
 
-        _bot.x = start_.x; _bot.y = start_.y;
+        _bot.x = start_[0]; _bot.y = start_[1];
         _bot.g = dist;
         _bot.lmc = dist;
         _bot.in_queue = false;
 
-        Node& bot = _bot;
+        bot = &_bot;
     } else {
-        auto botKey = makeKey(start_proxy);
-        Node& bot = nodes_[start_proxy];
+        botKey = makeKey(start_proxy);
+        bot = &nodes_[start_proxy];
     }
 
     // Stop when the robot's proxy is consistent 
     // And all cheaper nodes have been processed.
     while (!queue_.empty() &&
            (keyLess(topKey(), botKey)               ||
-            std::abs(bot.lmc - bot.g) > epsilon_    ||
-            bot.g == std::numeric_limits<double>::infinity() ||
-            bot.in_queue))
+            std::abs(bot->lmc - bot->g) > epsilon_    ||
+            bot->g == std::numeric_limits<double>::infinity() ||
+            bot->in_queue))
     {
         // Remove the minimum from the queue
         auto top = queue_.begin();
@@ -439,7 +440,7 @@ void RRTXPlanner::rewireNeighbors(std::size_t v_index) {
                 if (nbr.g - nbr.lmc > epsilon_) verifyQueue(nbr_index);
             }
         }
-    }
+    };
 
     rewire(v.nbr_init);
     rewire(v.nbr_running);
@@ -664,7 +665,7 @@ void RRTXPlanner::addObstacle(unsigned int i) {
     //     }
     // };
 
-    auto process_neighbors = [&](const auto& neighbors, Node& v) {
+    auto process_neighbors = [&](const auto& neighbors, Node& v, std::size_t v_idx) {
         for (std::size_t u_idx : neighbors) {
             if (v.blocked_nbrs.count(u_idx) > 0) continue;
 
@@ -692,8 +693,8 @@ void RRTXPlanner::addObstacle(unsigned int i) {
     for (std::size_t v_idx: possible_invalidated_points) {
         Node& v = nodes_[v_idx];
 
-        process_neighbors(v.nbr_running, v);
-        process_neighbors(v.nbr_init, v);
+        process_neighbors(v.nbr_running, v, v_idx);
+        process_neighbors(v.nbr_init, v, v_idx);
     }
 }
 
@@ -759,9 +760,7 @@ bool RRTXPlanner::isConnected(double sx, double sy) {
         }
     }
 
-    if (best_index != Node::INVALID_IDX) return true;
-
-    return false;
+    return best_index != Node::INVALID_IDX;
 }
 
 /**
