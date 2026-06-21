@@ -133,6 +133,7 @@ bool RRTXPlanner::makePlan(
      * We have to manually input the bounds of the area
      * Introduced sampling bounds that are input by the programmer
      */
+    if (planned_) ROS_INFO("[RRTXPlanner] Replanning")
     int total_samples = 0;
     int out[5] = {0, 0, 0, 0, 0};
 
@@ -357,7 +358,7 @@ void RRTXPlanner::reduceInconsistency() {
         double dist = 1.3 * utils::distance<double>(start_.x, start_.y, goal_.x, goal_.y);
         botKey.k1 = dist;
         botKey.k2 = dist;
-        botKey.index = 0;
+        botKey.index = Node::INVALID_IDX;
 
         _bot.x = start_.x; _bot.y = start_.y;
         _bot.g = dist;
@@ -803,7 +804,7 @@ double RRTXPlanner::getRadius() const {
     double n = static_cast<double>(nodes_.size());
     if (n <= 1) return step_length_;
 
-    return std::min(rad_const_ * std::pow(std::log(n) / n, 0.5), step_length_);
+    return std::min(rad_const_ * std::pow(std::log(1 + n) / n, 0.5), step_length_);
 }
 
 /**
