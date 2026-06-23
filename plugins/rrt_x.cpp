@@ -231,6 +231,10 @@ bool RRTXPlanner::makePlan(
 
     if (planned_) {
         ROS_INFO("[RRTXPlanner] redInc stats: %zu calls, %ld us", profiling::redInc_stats.calls, profiling::redInc_stats.duration.count());
+        ROS_INFO("[RRTXPlanner] addObs stats: %zu calls, %ld us", profiling::addObs_stats.calls, profiling::addObs_stats.duration.count());
+        ROS_INFO("[RRTXPlanner] remObs stats: %zu calls, %ld us", profiling::remObs_stats.calls, profiling::remObs_stats.duration.count());
+
+
     }
 
     return extractPath(start, goal, plan, start_time);
@@ -548,11 +552,12 @@ void RRTXPlanner::updateObstacles() {
 
     // First invocation of the function
     if (costmap_snapshot_.empty()) {
-        costmap_snapshot_.assign(live, live + N);
+        TIME("cmap_snapshot", costmap_snapshot_.assign(live, live + N));
         return;
     }
 
     // Diff with the old snapshot
+    TIME("cmap_diff",
     for (unsigned int i = 0; i < N; i++) {
         bool was_obs = (costmap_snapshot_[i] >= obstacle_cost_threshold_);
         bool is_obs = (live[i] >= obstacle_cost_threshold_);
@@ -560,6 +565,7 @@ void RRTXPlanner::updateObstacles() {
         if (!was_obs && is_obs) newly_blocked.push_back(i);
         if (was_obs && !is_obs) newly_cleared.push_back(i);
     }
+    );
 
     ROS_INFO("[RRTXPlanner] Obstacles added: %zu", newly_blocked.size());
     ROS_INFO("[RRTXPlanner] Obstacles removed: %zu", newly_cleared.size());
@@ -570,7 +576,7 @@ void RRTXPlanner::updateObstacles() {
     // Handle removed obstacles
     ROS_INFO("Removing obstacles...");
     if (!newly_cleared.empty()) {
-        for (unsigned int i: newly_cleared) removeObstacle(i);
+        for (unsigned int i: newly_cleared) BENCHMARK(remObs, removeObstacle(i));
         BENCHMARK(redInc, reduceInconsistency());
     }
     ROS_INFO("Completed.");
@@ -578,7 +584,7 @@ void RRTXPlanner::updateObstacles() {
     // Handle added obstacles
     ROS_INFO("Adding obstacles...");
     if (!newly_blocked.empty()) {
-        for (unsigned int i: newly_blocked) addObstacle(i);
+        for (unsigned int i: newly_blocked) BENCHMARK(addObs, addObstacle(i));
         propogateDescendents();
         verifyQueue(start_proxy);
         BENCHMARK(redInc, reduceInconsistency());

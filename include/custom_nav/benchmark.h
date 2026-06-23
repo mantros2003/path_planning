@@ -14,6 +14,16 @@
     profiling::name ## _stats.duration += duration;     \
     }
 
+#define TIME(id, stmt) \
+{                                                       \
+    auto st = std::chrono::steady_clock::now();         \
+    stmt;                                               \
+    auto duration = std::chrono::duration_cast<         \
+        std::chrono::microseconds>                      \
+        (std::chrono::steady_clock::now() - st);        \
+    ROS_INFO("%s took %ld us", id, duration.count());   \
+}                                                       \
+
 namespace profiling {
 
 struct samplingStats {
