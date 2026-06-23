@@ -11,7 +11,7 @@
         std::chrono::microseconds>                      \
         (std::chrono::steady_clock::now() - st);        \
     profiling::name ## _stats.calls++;                  \
-    profiling::name ## _stats.duration += duration      \
+    profiling::name ## _stats.duration += duration;     \
     }
 
 namespace profiling {

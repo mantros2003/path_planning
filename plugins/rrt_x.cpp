@@ -208,7 +208,7 @@ bool RRTXPlanner::makePlan(
 
             rewireNeighbors(this->nodes_.size() - 1);
             // In the Julia implementation by Otte, new node was explicitly added to the heap
-            verifyQueue(new_idx);
+            verifyQueue(this->nodes_.size() - 1);
             reduceInconsistency();
 
             iters++;
@@ -230,7 +230,7 @@ bool RRTXPlanner::makePlan(
     }
 
     if (planned_) {
-        ROS_INFO("[RRTXPlanner] redInc stats: %zu calls, %d us", profiling::redInc_stats.calls, profiling::redInc_stats.duration);
+        ROS_INFO("[RRTXPlanner] redInc stats: %zu calls, %ld us", profiling::redInc_stats.calls, profiling::redInc_stats.duration.count());
     }
 
     return extractPath(start, goal, plan, start_time);
