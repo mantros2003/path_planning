@@ -76,9 +76,9 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         RRTXPlanner() 
         : costmap_(nullptr), initialized_(false), planned_(false),
         height_m_(0), width_m_(0), height_c_(0), width_c_(0),
-        rad_const_(10.0),
+        rad_const_(4.0),
         obstacle_cost_threshold_(1),
-        step_length_(0.5),          // Default edge length
+        step_length_(0.2),          // Default edge length
         goal_tolerance_(0.2),       // Default tolerance to reach goal
         epsilon_(0.1),              // Default epsilon for collision checking/math
         max_iters_(1500),           // Default maximum iterations before giving up
