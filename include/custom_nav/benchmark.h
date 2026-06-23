@@ -1,6 +1,8 @@
 #ifndef BENCHMARK_H_
 #define BENCHMARK_H_
 
+#include <chrono>
+
 #define BENCHMARK(name, stmt) \
     {                                                   \
     auto st = std::chrono::steady_clock::now();         \
@@ -8,8 +10,8 @@
     auto duration = std::chrono::duration_cast<         \
         std::chrono::mircoseconds>                      \
         (std::chrono::steady_clock::now() - st);        \
-    profiling::name ## _stats.calls++;                             \
-    profiling::oname ## _stats.duration += duration                       \
+    profiling::name ## _stats.calls++;                  \
+    profiling::oname ## _stats.duration += duration     \
     }
 
 namespace profiling {
