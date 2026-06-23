@@ -1,5 +1,6 @@
 #include <custom_nav/rrt_x.h>
 #include <custom_nav/utils.h>
+#include <custom_nav/benchmark.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/line_iterator.h>
 #include <visualization_msgs/Marker.h>
@@ -199,7 +200,6 @@ bool RRTXPlanner::makePlan(
 
         // If not an obstacle, then add the point to the tree
         Node new_node(new_pt[0], new_pt[1]);
-        std::size_t new_idx = nodes_.size(); // It will be inserted at this index
 
         bool is_inserted = addPointToTree(new_pt, nearest_index);
 
@@ -227,6 +227,10 @@ bool RRTXPlanner::makePlan(
     if (!isConnected(sx, sy)) {
         ROS_WARN("[RRTXPlanner] Failed to find a path to the goal within max iterations.");
         return false;
+    }
+
+    if (planned_) {
+        ROS_INFO("[RRTXPlanner] redInc stats: %zu calls, %d us");
     }
 
     return extractPath(start, goal, plan, start_time);
@@ -567,7 +571,7 @@ void RRTXPlanner::updateObstacles() {
     ROS_INFO("Removing obstacles...");
     if (!newly_cleared.empty()) {
         for (unsigned int i: newly_cleared) removeObstacle(i);
-        reduceInconsistency();
+        BENCHMARK(redInc, reduceInconsistency());
     }
     ROS_INFO("Completed.");
 
@@ -577,7 +581,7 @@ void RRTXPlanner::updateObstacles() {
         for (unsigned int i: newly_blocked) addObstacle(i);
         propogateDescendents();
         verifyQueue(start_proxy);
-        reduceInconsistency();
+        BENCHMARK(redInc, reduceInconsistency());
     }
     ROS_INFO("Completed.");
 }
