@@ -8,10 +8,10 @@
     auto st = std::chrono::steady_clock::now();         \
     stmt;                                               \
     auto duration = std::chrono::duration_cast<         \
-        std::chrono::mircoseconds>                      \
+        std::chrono::microseconds>                      \
         (std::chrono::steady_clock::now() - st);        \
     profiling::name ## _stats.calls++;                  \
-    profiling::oname ## _stats.duration += duration     \
+    profiling::name ## _stats.duration += duration      \
     }
 
 namespace profiling {
@@ -26,7 +26,7 @@ struct samplingStats {
 
 struct perfStats {
     std::size_t calls;
-    std::chrono::mircoseconds duration;
+    std::chrono::microseconds duration;
 };
 
 void profileFunc(struct perfStats *ps);
@@ -36,3 +36,5 @@ struct perfStats remObs_stats;
 struct perfStats redInc_stats;
 
 }
+
+#endif // BENCHMARK_H_
