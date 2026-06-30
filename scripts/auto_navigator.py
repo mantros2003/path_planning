@@ -10,8 +10,8 @@ class TrialOrchestrator:
         rospy.init_node('trial_orchestrator', anonymous=True)
 
         # 1. Define your coordinates (Update these to match your simulation map)
-        self.start_pose = self.create_pose(x=0.0, y=0.0, theta_w=1.0)
-        self.target_pose = self.create_pose(x=8.0, y=8.0, theta_w=1.0)
+        self.start_pose = self.create_pose(x=4.0, y=-4.0, theta_w=1.0)
+        self.target_pose = self.create_pose(x=-4.0, y=4.0, theta_w=1.0)
         
         # Define how many back-and-forth trips to make
         self.total_trials = rospy.get_param('~trials', 10)
