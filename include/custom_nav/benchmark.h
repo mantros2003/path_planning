@@ -21,7 +21,7 @@
     auto duration = std::chrono::duration_cast<         \
         std::chrono::microseconds>                      \
         (std::chrono::steady_clock::now() - st);        \
-    ROS_INFO("%s took %ld us", id, duration.count());   \
+    ROS_INFO("[RRTXPlanner] %s took %ld us", id, duration.count());   \
 }                                                       \
 
 namespace profiling {
