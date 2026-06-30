@@ -12,7 +12,7 @@ class AutomatedMetricsLogger:
         rospy.init_node('automated_metrics_logger', anonymous=True)
 
         # Configurable Parameters
-        self.path_topic = rospy.get_param('~path_topic', '/move_base/GlobalPlanner/plan')
+        self.path_topic = rospy.get_param('~path_topic', '/move_base/DWAPlannerROS/global_plan')
         self.status_topic = rospy.get_param('~status_topic', '/move_base/status')
         self.csv_file = rospy.get_param('~csv_path', '/tmp/rrtx_automated_metrics.csv')
         
