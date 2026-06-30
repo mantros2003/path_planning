@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 from nav_msgs.msg import Path
@@ -25,7 +25,7 @@ def global_path_listener():
 
     # Define the topic name based on your planner configuration
     # Note: Change 'GlobalPlanner' to 'NavfnROS' if that is what your system uses.
-    topic_name = '/move_base/DWAPlannerROS/plan'
+    topic_name = '/move_base/DWAPlannerROS/global_plan'
 
     # Subscribe to the topic
     rospy.Subscriber(topic_name, Path, path_callback)
