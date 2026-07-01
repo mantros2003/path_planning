@@ -9,14 +9,14 @@ class TrialOrchestrator:
     def __init__(self):
         rospy.init_node('trial_orchestrator', anonymous=True)
 
-        # 1. Define your coordinates (Update these to match your simulation map)
+        # Define coordinates
         self.start_pose = self.create_pose(x=4.0, y=-4.0, theta_w=1.0)
         self.target_pose = self.create_pose(x=-4.0, y=4.0, theta_w=1.0)
         
-        # Define how many back-and-forth trips to make
+        # Define how many trips to make
         self.total_trials = rospy.get_param('~trials', 10)
 
-        # 2. Connect to the navigation asynchronous action server
+        # Connect to the navigation action server
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
         rospy.loginfo("Waiting for navigation action server to come online...")
         self.client.wait_for_server()

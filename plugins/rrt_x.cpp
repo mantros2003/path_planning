@@ -557,13 +557,30 @@ void RRTXPlanner::updateObstacles() {
     }
 
     // Diff with the old snapshot
-    TIME("cmap_diff",
-    for (unsigned int i = 0; i < N; i++) {
-        bool was_obs = (costmap_snapshot_[i] >= obstacle_cost_threshold_);
-        bool is_obs = (live[i] >= obstacle_cost_threshold_);
+    // TIME("cmap_diff",
+    // for (unsigned int i = 0; i < N; i++) {
+    //     bool was_obs = (costmap_snapshot_[i] >= obstacle_cost_threshold_);
+    //     bool is_obs = (live[i] >= obstacle_cost_threshold_);
 
-        if (!was_obs && is_obs) newly_blocked.push_back(i);
-        if (was_obs && !is_obs) newly_cleared.push_back(i);
+    //     if (!was_obs && is_obs) newly_blocked.push_back(i);
+    //     if (was_obs && !is_obs) newly_cleared.push_back(i);
+    // }
+    // );
+
+    // Optimization: We only process the subset of the costmap that contains our map
+    TIME("cmap_diff",
+    for (unsigned int y = sampling_min_y; y <= sampling_max_y; y++) {
+        for (unsigned int x = sampling_min_x; x <= sampling_max_x; x++) {
+            unsigned int i = y * width_c_ + x;
+
+            bool was_obs = (costmap_snapshot_[i] >= obstacle_cost_threshold_);
+            bool is_obs = (live[i] >= obstacle_cost_threshold_);
+
+            if (!was_obs && is_obs) newly_blocked.push_back(i);
+            if (was_obs && !is_obs) newly_cleared.push_back(i);
+
+            costmap_snapshot_[i] = live[i];
+        }
     }
     );
 
@@ -571,7 +588,7 @@ void RRTXPlanner::updateObstacles() {
     ROS_INFO("[RRTXPlanner] Obstacles removed: %zu", newly_cleared.size());
 
     // Store the new data
-    std::memcpy(costmap_snapshot_.data(), live, N);
+    // std::memcpy(costmap_snapshot_.data(), live, N);
 
     // Handle removed obstacles
     ROS_INFO("Removing obstacles...");
