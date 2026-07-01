@@ -569,8 +569,8 @@ void RRTXPlanner::updateObstacles() {
 
     // Optimization: We only process the subset of the costmap that contains our map
     TIME("cmap_diff",
-    for (unsigned int y = sampling_min_y; y <= sampling_max_y; y++) {
-        for (unsigned int x = sampling_min_x; x <= sampling_max_x; x++) {
+    for (unsigned int y = sampling_min_y_; y <= sampling_max_y_; y++) {
+        for (unsigned int x = sampling_min_x_; x <= sampling_max_x_; x++) {
             unsigned int i = y * width_c_ + x;
 
             bool was_obs = (costmap_snapshot_[i] >= obstacle_cost_threshold_);
