@@ -96,9 +96,9 @@ bool RRTXPlanner::makePlan(
     
     // Check if the goal has changed and we need a new tree
     if (isNewGoal(gx, gy)) {
-        ROS_INFO("[RRTXPlanner] Got a new goal, cleaning old containers");
+        ROS_INFO("[RRTXPlanner] Got a new goal, cleaning old containers, currently have %lu nodes", this->nodes_.size());
         resetTree();
-        costmap_snapshot_.clear();
+        this->costmap_snapshot_.clear();
         
         Node root_node(goal.pose.position.x, goal.pose.position.y);
         root_node.g = 0.0;

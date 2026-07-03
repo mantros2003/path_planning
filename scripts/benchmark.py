@@ -14,7 +14,7 @@ class ContinuousMetricsLogger:
         # Configurable Parameters
         self.path_topic = rospy.get_param('~path_topic', '/move_base/DWAPlannerROS/global_plan')
         self.status_topic = rospy.get_param('~status_topic', '/move_base/status')
-        self.csv_file = rospy.get_param('~csv_path', '/tmp/rrtx_continuous_metrics.csv')
+        self.csv_file = rospy.get_param('~csv_path', '/home/swapnil/rrtx_continuous_metrics.csv')
         
         # State Variables
         self.is_recording = False
