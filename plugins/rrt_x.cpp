@@ -226,7 +226,12 @@ bool RRTXPlanner::makePlan(
 
     if (!isConnected(sx, sy)) {
         ROS_WARN("[RRTXPlanner] Failed to find a path to the goal within max iterations.");
-        return false;
+        ROS_WSRN("[RRTXPlanner] Flushing the inconsistency queue.")
+        flushQueue();
+        if (!isConnected(sx, sy)) {
+            ROS_WARN("[RRTXPlanner] Still unable to find a path")
+                return false;
+        }
     }
 
     if (planned_) {
@@ -281,6 +286,7 @@ bool RRTXPlanner::addPointToTree(Point<double, 2> p, std::size_t near_idx) {
     return true;
 }
 
+/* Extract the path from the tree by moving from start to goal */
 bool RRTXPlanner::extractPath(
     const geometry_msgs::PoseStamped& start,
     const geometry_msgs::PoseStamped& goal,
@@ -354,6 +360,7 @@ bool RRTXPlanner::extractPath(
     return true;
 }
 
+/* Process the inconsistency queue */
 void RRTXPlanner::reduceInconsistency() {
     // Anonymous function that returns the minimum in the set
     auto topKey = [&]() { return *queue_.begin(); };
@@ -408,6 +415,26 @@ void RRTXPlanner::reduceInconsistency() {
         
         // Update botKey just in case the proxy's cost changed during the loop
         if (start_proxy != Node::INVALID_IDX) botKey = makeKey(start_proxy);
+    }
+}
+
+/* Empty the queue */
+void RRTXPlanner::flushQueue() {
+    while (!this->queue_.empty()) {
+        auto top = this->queue_.begin();
+        std::size_t v_idx = top->index;
+        this->queue_.erase(top);
+        this->queueMap_.erase(v_idx);
+
+        Node& v = this->nodes_[v_idx];
+        v.in_queue = false;
+
+        if (v.g - v.lmv > this->epsilon_) {
+            updateLMC(v_idx);
+            rewireNeighbors(v_idx);
+        }
+
+        v.g = v.lmc;
     }
 }
 

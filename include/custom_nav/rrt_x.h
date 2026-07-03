@@ -146,6 +146,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         bool addPointToTree(Point<double, 2>, std::size_t);
         bool extractPath(const geometry_msgs::PoseStamped&, const geometry_msgs::PoseStamped&, std::vector<geometry_msgs::PoseStamped>&, ros::Time);
         void reduceInconsistency();
+        void flushQueue();
         void rewireNeighbors(std::size_t);
         void cullNeighbors(std::size_t);
         void updateLMC(std::size_t);
