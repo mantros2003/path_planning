@@ -17,7 +17,7 @@ class TrialOrchestrator:
         
         # Define how many trips to make
         self.total_trials = rospy.get_param('~trials', 10)
-        self.robot_name = rospy.get_param("~robot_name", "robomuse")
+        self.robot_name = rospy.get_param("~robot_name", "mobile_bot")
 
         # Connect to the navigation action server
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
