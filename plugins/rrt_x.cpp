@@ -343,7 +343,7 @@ bool RRTXPlanner::extractPath(
             plan.clear();
             for (int i = 0; i < 5; i++) {
                 const Node& curr_node = nodes_[current_idx];
-                ROS_ERROR("Node index: %lu\tparent: %lu\tg: %f\tlmc: %f\tdist_to_par: %f", current_idx, curr_node.par_idx, curr_node.g, curr_node.lmc, distance(current_idx, curr_node.par_idx));
+                ROS_ERROR("Node index: %lu\tparent: %lu\t pos: (%f, %f)\tg: %f\tlmc: %f\tdist_to_par: %f", current_idx, curr_node.par_idx, curr_node.x, curr_node.y, curr_node.g, curr_node.lmc, distance(current_idx, curr_node.par_idx));
                 current_idx = curr_node.par_idx;
             }
             return false;
