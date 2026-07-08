@@ -226,10 +226,10 @@ bool RRTXPlanner::makePlan(
 
     if (!isConnected(sx, sy)) {
         ROS_WARN("[RRTXPlanner] Failed to find a path to the goal within max iterations.");
-        ROS_WSRN("[RRTXPlanner] Flushing the inconsistency queue.")
+        ROS_WARN("[RRTXPlanner] Flushing the inconsistency queue.");
         flushQueue();
         if (!isConnected(sx, sy)) {
-            ROS_WARN("[RRTXPlanner] Still unable to find a path")
+            ROS_WARN("[RRTXPlanner] Still unable to find a path");
                 return false;
         }
     }
@@ -428,7 +428,7 @@ void RRTXPlanner::flushQueue() {
         Node& v = this->nodes_[v_idx];
         v.in_queue = false;
 
-        if (v.g - v.lmv > this->epsilon_) {
+        if (v.g - v.lmc > this->epsilon_) {
             updateLMC(v_idx);
             rewireNeighbors(v_idx);
         }
