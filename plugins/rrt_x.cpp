@@ -368,9 +368,8 @@ void RRTXPlanner::reduceInconsistency() {
     // Make key and extract the closest node to the current bot position
     QKey botKey;
     Node* bot = nullptr;
+    Node _bot;
     if (start_proxy == Node::INVALID_IDX) {
-        Node _bot;
-
         double dist = 1.3 * utils::distance<double>(start_[0], start_[1], goal_[0], goal_[1]);
         botKey.k1 = dist;
         botKey.k2 = dist;

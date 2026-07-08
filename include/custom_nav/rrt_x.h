@@ -81,7 +81,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         step_length_(0.2),          // Default edge length
         goal_tolerance_(0.2),       // Default tolerance to reach goal
         epsilon_(0.1),              // Default epsilon for collision checking/math
-        max_iters_(1500),           // Default maximum iterations before giving up
+        max_iters_(6000),           // Default maximum iterations before giving up
         rng{dev()},                 // Initialize the random number genera with the random device
         rand01{0.0, 1.0},           // Initialize the distribution
         radius_(0.3),
