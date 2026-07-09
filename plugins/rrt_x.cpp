@@ -577,7 +577,7 @@ void RRTXPlanner::updateObstacles() {
     std::vector<unsigned int> newly_blocked;
     std::vector<unsigned int> newly_cleared;
 
-    boost::unique_lock<costmap_2d::Costmad2D::mutex_t> lock(*this->costmap_->getMutex());
+    boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*this->costmap_->getMutex());
 
     this->updateCostmapParams();
 
