@@ -143,6 +143,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         ros::Publisher tree_pub_;
 
         // Functions
+        void updateCostmapParams();
         bool addPointToTree(Point<double, 2>, std::size_t);
         bool extractPath(const geometry_msgs::PoseStamped&, const geometry_msgs::PoseStamped&, std::vector<geometry_msgs::PoseStamped>&, ros::Time);
         void reduceInconsistency();

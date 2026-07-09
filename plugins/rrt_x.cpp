@@ -24,14 +24,8 @@ namespace custom_planner {
 // Function to initialize and store the costmap info once.
 void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
     if (!initialized_) {
-        costmap_    = costmap_ros->getCostmap();
-        height_m_   = costmap_->getSizeInMetersY();
-        width_m_    = costmap_->getSizeInMetersX();
-        height_c_   = costmap_->getSizeInCellsY();
-        width_c_    = costmap_->getSizeInCellsX();
-        origin_x    = costmap_->getOriginX();
-        origin_y    = costmap_->getOriginY();
-        resolution_ = costmap_->getResolution();
+        this->costmap_ = costmap_ros->getCostmap();
+        this->updateCostmapParams();                // Sets all the costmap info like height, width
 
         goal_ = Point<double, 2>{origin_x, origin_y};
 
@@ -40,21 +34,19 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         // const uint8_t *charMap = costmap_->getCharMap();
         // costmap_snapshot_.assign(charMap, charMap + N);
 
-        _buildFreeCellList();
-
         ros::NodeHandle private_nh("~/" + name);
 
         int min_x, min_y, max_x, max_y;
 
         private_nh.param<int>("sampling_min_x", min_x, 0);
-        private_nh.param<int>("sampling_max_x", max_x, width_c_);
+        private_nh.param<int>("sampling_max_x", max_x, width_c_ - 1);
         private_nh.param<int>("sampling_min_y", min_y, 0);
-        private_nh.param<int>("sampling_max_y", max_y, height_c_);
+        private_nh.param<int>("sampling_max_y", max_y, height_c_ - 1);
 
-        sampling_min_x_ = min_x;
-        sampling_max_x_ = max_x;
-        sampling_min_y_ = min_y;
-        sampling_max_y_ = max_y;
+        this->sampling_min_x_ = min_x;
+        this->sampling_max_x_ = max_x;
+        this->sampling_min_y_ = min_y;
+        this->sampling_max_y_ = max_y;
 
         ROS_INFO("[RRTXPlanner] has_param_1: %d\t has_param_2: %d\t has_param_3: %d\t has_param_4: %d\t", private_nh.hasParam("sampling_min_x"), private_nh.hasParam("sampling_max_x"), private_nh.hasParam("sampling_min_y"), private_nh.hasParam("sampling_max_y"));
 
@@ -64,6 +56,8 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         tree_pub_ = private_nh.advertise<visualization_msgs::Marker>(
             "search_tree", 1, true
         );
+
+        _buildFreeCellList();
 
         initialized_ = true;
     } else {
@@ -243,6 +237,17 @@ bool RRTXPlanner::makePlan(
     }
 
     return extractPath(start, goal, plan, start_time);
+}
+
+/* Set the values of all the costmap related constants */
+void RRTXPlanner::updateCostmapParams() {
+    this->height_m_     = this->costmap_->getSizeInMetersY();
+    this->width_m_      = this->costmap_->getSizeInMetersX();
+    this->height_c_     = this->costmap_->getSizeInCellsY();
+    this->width_c_      = this->costmap_->getSizeInCellsX();
+    this->origin_x      = this->costmap_->getOriginX();
+    this->origin_y      = this->costmap_->getOriginY();
+    this->resolution_   = this->costmap_->getResolution();
 }
 
 /* Adds a new point to the tree */
@@ -572,13 +577,17 @@ void RRTXPlanner::updateObstacles() {
     std::vector<unsigned int> newly_blocked;
     std::vector<unsigned int> newly_cleared;
 
+    boost::unique_lock<costmap_2d::Costmad2D::mutex_t> lock(*this->costmap_->getMutex());
+
+    this->updateCostmapParams();
+
     // Get the new costmap data
-    const uint8_t* live = costmap_->getCharMap();
-    const unsigned int N = width_c_ * height_c_;
+    const uint8_t* live = this->costmap_->getCharMap();
+    const unsigned int N = this->width_c_ * this->height_c_;
 
     // First invocation of the function
-    if (costmap_snapshot_.empty()) {
-        TIME("cmap_snapshot", costmap_snapshot_.assign(live, live + N));
+    if (this->costmap_snapshot_.empty()) {
+        TIME("cmap_snapshot", this->costmap_snapshot_.assign(live, live + N));
         return;
     }
 
@@ -609,6 +618,8 @@ void RRTXPlanner::updateObstacles() {
         }
     }
     );
+
+    lock.unlock();
 
     ROS_INFO("[RRTXPlanner] Obstacles added: %zu", newly_blocked.size());
     ROS_INFO("[RRTXPlanner] Obstacles removed: %zu", newly_cleared.size());
