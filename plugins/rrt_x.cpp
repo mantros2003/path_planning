@@ -25,7 +25,7 @@ namespace custom_planner {
 void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
     if (!initialized_) {
         this->costmap_ = costmap_ros->getCostmap();
-        this->global_frame_id_ = costmap_ros_->getGlobalFrameID();
+        this->global_frame_id_ = costmap_ros->getGlobalFrameID();
         this->updateCostmapParams();                // Sets all the costmap info like height, width
 
         goal_ = Point<double, 2>{origin_x, origin_y};
@@ -57,7 +57,7 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         tree_pub_ = private_nh.advertise<visualization_msgs::Marker>(
             "search_tree", 1, true
         );
-        stats_pub_ = privat_nh.advertise<custom_nav::RRTXStats>("stats", 10);
+        stats_pub_ = private_nh.advertise<custom_nav::RRTXStats>("stats", 10);
 
         buildFreeCellList();
 
@@ -218,7 +218,7 @@ bool RRTXPlanner::makePlan(
     // Build the stats message
     custom_nav::RRTXStats stats_msg;
     stats_msg.header.stamp = ros::Time::now();
-    stats_msg.header.frame_id = this->global_frame_id;
+    stats_msg.header.frame_id = this->global_frame_id_;
     stats_msg.planning_time = planning_time;
 
     ROS_INFO("[RRTXPlanner] Our graph has %zu nodes", nodes_.size());
@@ -236,6 +236,8 @@ bool RRTXPlanner::makePlan(
         flushQueue();
         if (!isConnected(sx, sy)) {
             ROS_WARN("[RRTXPlanner] Still unable to find a path");
+                stats_msg.path_found = false;
+                state_pub_.publish(stats_msg);
                 return false;
         }
     }
@@ -244,9 +246,10 @@ bool RRTXPlanner::makePlan(
         ROS_INFO("[RRTXPlanner] redInc stats: %zu calls, %ld us", profiling::redInc_stats.calls, profiling::redInc_stats.duration.count());
         ROS_INFO("[RRTXPlanner] addObs stats: %zu calls, %ld us", profiling::addObs_stats.calls, profiling::addObs_stats.duration.count());
         ROS_INFO("[RRTXPlanner] remObs stats: %zu calls, %ld us", profiling::remObs_stats.calls, profiling::remObs_stats.duration.count());
-
-
     }
+
+    stats_msg.path_found = true;
+    stats_pub_.publish(stats_msg);
 
     return extractPath(start, goal, plan, start_time);
 }
