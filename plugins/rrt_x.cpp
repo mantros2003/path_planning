@@ -25,6 +25,7 @@ namespace custom_planner {
 void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
     if (!initialized_) {
         this->costmap_ = costmap_ros->getCostmap();
+        this->global_frame_id_ = costmap_ros_->getGlobalFrameID();
         this->updateCostmapParams();                // Sets all the costmap info like height, width
 
         goal_ = Point<double, 2>{origin_x, origin_y};
@@ -56,8 +57,9 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
         tree_pub_ = private_nh.advertise<visualization_msgs::Marker>(
             "search_tree", 1, true
         );
+        stats_pub_ = privat_nh.advertise<custom_nav::RRTXStats>("stats", 10);
 
-        _buildFreeCellList();
+        buildFreeCellList();
 
         initialized_ = true;
     } else {
@@ -79,6 +81,7 @@ bool RRTXPlanner::makePlan(
     ROS_INFO("[RRTXPlanner] Making path using RRTX");
 
     ros::Time start_time = ros::Time::now();
+    ros::WallTime wall_start_time = ros::WallTime::now();
 
     double sx = start.pose.position.x;
     double sy = start.pose.position.y;
@@ -91,17 +94,18 @@ bool RRTXPlanner::makePlan(
     // Check if the goal has changed and we need a new tree
     if (isNewGoal(gx, gy)) {
         ROS_INFO("[RRTXPlanner] Got a new goal, cleaning old containers, currently have %lu nodes", this->nodes_.size());
-        resetTree();
+        this->resetTree();
         this->costmap_snapshot_.clear();
         
+        // Add new goal node
         Node root_node(goal.pose.position.x, goal.pose.position.y);
         root_node.g = 0.0;
         root_node.lmc = 0.0;
-        nodes_.push_back(root_node);
-        kd_tree.insert(Point<double, 2>({root_node.x, root_node.y}), 0);
-        planned_ = false;
+        this->nodes_.push_back(root_node);
+        this->kd_tree.insert(Point<double, 2>({root_node.x, root_node.y}), 0);
+        this->planned_ = false;
         // Add to kd tree
-        _buildFreeCellList();
+        buildFreeCellList();
         ROS_INFO("Number of cells in free cell list: %zu", free_cells.size());
     }
     
@@ -208,6 +212,14 @@ bool RRTXPlanner::makePlan(
             iters++;
         }
     }
+
+    double planning_time = (ros::WallTime::now() - wall_start_time).toSec() * 1000.0;
+
+    // Build the stats message
+    custom_nav::RRTXStats stats_msg;
+    stats_msg.header.stamp = ros::Time::now();
+    stats_msg.header.frame_id = this->global_frame_id;
+    stats_msg.planning_time = planning_time;
 
     ROS_INFO("[RRTXPlanner] Our graph has %zu nodes", nodes_.size());
     ROS_INFO("[RRTXPlanner] Total samples taken: %d", total_samples);
@@ -795,6 +807,7 @@ void RRTXPlanner::resetTree() {
     orphan_set_.clear();
     queue_.clear();
     queueMap_.clear();
+    obstacles_.clear();
 }
 
 /**
@@ -1100,7 +1113,7 @@ std::pair<double, double> RRTXPlanner::samplePoint() {
 /**
  * Populate the initial free cell list
  */
-void RRTXPlanner::_buildFreeCellList() {
+void RRTXPlanner::buildFreeCellList() {
     free_cells.clear();
 
     for (unsigned int y = sampling_min_y_; y <= sampling_max_y_; y++) {

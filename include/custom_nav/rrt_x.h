@@ -8,6 +8,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_core/base_global_planner.h>
 #include <nav_msgs/Path.h>
+#include <custom_nav/RRTXStats.h>
 #endif
 
 #include <custom_nav/kd_tree_x.h>
@@ -18,6 +19,7 @@
 #include <unordered_set>
 #include <random>
 #include <limits>
+#include <string>
 
 #define _VIS_RRTX_TREE
 
@@ -97,6 +99,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
 
     private:
         costmap_2d::Costmap2D* costmap_;
+        std::string global_frame_id_;
         bool initialized_;
         bool planned_;
         double height_m_, width_m_;             // Map width in meters
@@ -139,8 +142,9 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         std::set<QKey> queue_;
         std::unordered_map<std::size_t, QKey> queueMap_;
 
-        // Publisher for visualization messages
-        ros::Publisher tree_pub_;
+        // Publishers
+        ros::Publisher tree_pub_;           // For visualising RRTx tree
+        ros::Publisher stats_pub_;          // For publishing stats
 
         // Functions
         void updateCostmapParams();
@@ -171,7 +175,7 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         bool isEdgeInCollision(double, double, double, double, 
                        double, double, double, double);
         std::pair<double, double> samplePoint();
-        void _buildFreeCellList();
+        void buildFreeCellList();
         double squaredDistance(const std::size_t, const std::size_t) const;
         double distance(const std::size_t, const std::size_t) const;
         void buildTreeMarker(const std::string& frame_id = "map");

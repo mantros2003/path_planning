@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
   tf
   geometry_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -56,6 +57,11 @@ find_package(catkin REQUIRED COMPONENTS
 #   Message2.msg
 # )
 
+add_message_files(
+    FILES
+    RRTXStats.msg
+)
+
 ## Generate services in the 'srv' folder
 # add_service_files(
 #   FILES
@@ -75,6 +81,11 @@ find_package(catkin REQUIRED COMPONENTS
 #   DEPENDENCIES
 #   std_msgs  # Or other packages containing msgs
 # )
+
+generate_messages(
+    DEPENDENCIES
+    std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -115,7 +126,7 @@ catkin_package(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES custom_planner_lib kd_tree_lib
-  CATKIN_DEPENDS roscpp nav_core costmap_2d pluginlib tf geometry_msgs
+  CATKIN_DEPENDS roscpp nav_core costmap_2d pluginlib tf geometry_msgs message_runtime
 )
 
 ###########
