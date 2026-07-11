@@ -12,7 +12,7 @@ class ContinuousMetricsLogger:
         rospy.init_node('continuous_metrics_logger', anonymous=True)
 
         # Configurable Parameters
-        self.path_topic = rospy.get_param('~path_topic', '/move_base/DWAPlannerROS/global_plan')
+        self.path_topic = rospy.get_param('~path_topic', '/move_base/TebLocalPlannerROS/global_plan')
         self.status_topic = rospy.get_param('~status_topic', '/move_base/status')
         self.csv_file = rospy.get_param('~csv_path', '/home/swapnil/rrtx_continuous_metrics.csv')
         
