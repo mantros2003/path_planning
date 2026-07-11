@@ -237,7 +237,7 @@ bool RRTXPlanner::makePlan(
         if (!isConnected(sx, sy)) {
             ROS_WARN("[RRTXPlanner] Still unable to find a path");
                 stats_msg.path_found = false;
-                state_pub_.publish(stats_msg);
+                stats_pub_.publish(stats_msg);
                 return false;
         }
     }
