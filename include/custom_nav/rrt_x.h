@@ -12,6 +12,7 @@
 #endif
 
 #include <custom_nav/kd_tree_x.h>
+#include <custom_nav/utils.h>
 
 #include <vector>
 #include <set>
@@ -22,6 +23,14 @@
 #include <string>
 
 #define _VIS_RRTX_TREE
+
+#ifdef USE_SAFE_VECTOR
+    template <typename T, typename Allocator = std::allocator<T>>
+    using Vector = utils::safeVec<T, Allocator>;
+#else
+    template <typename T, typename Allocator = std::allocator<T>>
+    using Vector = std::vector<T, Allocator>;
+#endif
 
 namespace custom_planner {
 
@@ -38,10 +47,10 @@ struct Node {
 
     // We are using unsigned int for storing index of the nodes
     // Using only one container for in and out as graph will be symmetric
-    std::vector<std::size_t> nbr_init;                              // Initial neighbors
-    std::vector<std::size_t> nbr_running;                           // Neighbors within r(|V|)
+    Vector<std::size_t> nbr_init;                              // Initial neighbors
+    Vector<std::size_t> nbr_running;                           // Neighbors within r(|V|)
     std::set<std::size_t> blocked_nbrs;                             // Neighbors to whom distance is inf
-    std::vector<std::size_t> children;
+    Vector<std::size_t> children;
 
     // To indicate invalid index
     static constexpr std::size_t INVALID_IDX = std::numeric_limits<std::size_t>::max();
@@ -109,16 +118,16 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         unsigned int sampling_min_x_, sampling_max_x_;
         unsigned int sampling_min_y_, sampling_max_y_;
         double radius_;                         // The radius for neighborhood search
-        std::vector<uint8_t> costmap_snapshot_; // Holds the last known values of the costmap
-        std::vector<unsigned int> obstacles_;   // Indices of obstacles in the costmap
-        std::vector<std::pair<unsigned int, unsigned int>> free_cells;   // Maintain a list of free cells and sample from this to make sampling efficient
+        Vector<uint8_t> costmap_snapshot_; // Holds the last known values of the costmap
+        Vector<unsigned int> obstacles_;   // Indices of obstacles in the costmap
+        Vector<std::pair<unsigned int, unsigned int>> free_cells;   // Maintain a list of free cells and sample from this to make sampling efficient
 
         Point<double, 2> goal_, start_;
 
         std::size_t start_proxy;
 
         // Tree and node containers
-        std::vector<struct Node> nodes_;                    // Stores all the nodes 
+        Vector<struct Node> nodes_;                    // Stores all the nodes 
         std::unordered_set<std::size_t> orphan_set_;        // All the nodes which are cut-off from the main  tra
 
         // Hyperparams

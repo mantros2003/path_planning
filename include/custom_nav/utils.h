@@ -30,6 +30,23 @@ inline double distance(T x1, T y1, T x2, T y2) {
     return std::sqrt(squared_dist(x1, y1, x2, y2));
 }
 
+template <typename T, typename Allocator = std::allocator<T>>
+class safeVec : public std::vector<T, Allocator> {
+public:
+    using std::vector<T, Allocator>::vector;
+
+    typename std::vector<T, Allocator>::reference
+    operator[] (typename std::vector<T, Allocator>::size_type n) {
+        return this->at(idx);
+    }
+
+    typename std::vector<T, Allocator>::const_reference
+    operator[] (typename std::vector<T, Allocator>::size_type n) const {
+        return this->at(idx);
+    }
+
+}
+
 }
 
 #endif // UTILS_H_
