@@ -29,6 +29,8 @@ class RRTXBench:
         # Setup CSV and resume Trial ID
         self.setup_csv_and_resume()
 
+        rospy.on_shutdown(self.shutdown_hook)
+
         # Goal Status Subscriber (Independent state machine)
         rospy.Subscriber(self.status_topic, GoalStatusArray, self.status_callback)
 
@@ -108,7 +110,7 @@ class RRTXBench:
 
         # 1. Get accurate time and latency from the synchronized messages
         current_time = path_msg.header.stamp.to_sec()
-        latency = stats_msg.planning_time_sec
+        latency = stats_msg.planning_time
         path_found = int(stats_msg.path_found) # Convert bool to 1 or 0 for CSV
 
         # 2. Calculate Current Path Length
@@ -157,6 +159,11 @@ class RRTXBench:
                 ])
             
         rospy.loginfo(f"Trial {self.trial_id}: Wrote {total_entries} synchronized records to CSV.")
+
+    def shutdown_hook(self):
+        if self.is_recording:
+            self.save_trial_data(-2)
+            rospy.loginfo(f"Aborting Trial {self.trial_id}, Ctrl-C detected")
 
 if __name__ == '__main__':
     try:
