@@ -37,15 +37,14 @@ public:
 
     typename std::vector<T, Allocator>::reference
     operator[] (typename std::vector<T, Allocator>::size_type n) {
-        return this->at(idx);
+        return this->at(n);
     }
 
     typename std::vector<T, Allocator>::const_reference
     operator[] (typename std::vector<T, Allocator>::size_type n) const {
-        return this->at(idx);
+        return this->at(n);
     }
-
-}
+};
 
 }
 
