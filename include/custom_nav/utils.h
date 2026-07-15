@@ -32,7 +32,7 @@ inline double distance(T x1, T y1, T x2, T y2) {
     return std::sqrt(squared_dist(x1, y1, x2, y2));
 }
 
-inline void print_stack_trace_and_abort() {
+inline void print_stack_trace_and_abort_boost() {
     fprintf(stderr, "\n[FATAL] SafeVector Out-of-Bounds Access Detected!\n");
     fprintf(stderr, "--- STACK TRACE ---\n");
     
@@ -65,7 +65,7 @@ public:
     operator[] (typename std::vector<T, Allocator>::size_type n) {
         if (n >= this->size()) {
             fprintf(stderr, "writing oob at index: %lu in a vector of size: %lu", n, this->size());
-            print_stack_trace_and_abort();
+            print_stack_trace_and_abort_boost();
         }
         return this->at(n);
     }
