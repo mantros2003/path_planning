@@ -4,7 +4,7 @@
 #ifdef __linux__
 #include <geometry_msgs/PoseStamped.h>
 #include <execinfo.h>
-#include <boost::stacktrace.hpp>
+#include <boost/stacktrace.hpp>
 #endif
 #include <vector>
 #include <cmath>
