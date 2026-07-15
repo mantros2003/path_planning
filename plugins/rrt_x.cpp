@@ -1,5 +1,4 @@
 #include <custom_nav/rrt_x.h>
-#include <custom_nav/utils.h>
 #include <custom_nav/benchmark.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/line_iterator.h>
@@ -1015,6 +1014,8 @@ void RRTXPlanner::verifyQueue(std::size_t node_idx) {
         ROS_WARN("[RRTXPlanner] Root is being added to queue");
         return;
     }
+    if (node_idx == Node::INVLAID_IDX) return;
+
     QKey key = makeKey(node_idx);
     auto it = queueMap_.find(node_idx);
     if (it == queueMap_.end()) {
