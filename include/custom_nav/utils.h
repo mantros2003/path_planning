@@ -51,13 +51,19 @@ public:
 
     typename std::vector<T, Allocator>::reference
     operator[] (typename std::vector<T, Allocator>::size_type n) {
-        if (n >= this->size()) print_stack_trace_and_abort();
+        if (n >= this->size()) {
+            fprintf(stderr, "writing oob at index: %lu in a vector of size: %lu", n, this->size());
+            print_stack_trace_and_abort();
+        }
         return this->at(n);
     }
 
     typename std::vector<T, Allocator>::const_reference
     operator[] (typename std::vector<T, Allocator>::size_type n) const {
-        if (n >= this->size()) print_stack_trace_and_abort();
+        if (n >= this->size()) {
+            fprintf(stderr, "writing oob at index: %lu in a vector of size: %lu", n, this->size());
+            print_stack_trace_and_abort();
+        }
         return this->at(n);
     }
 };
