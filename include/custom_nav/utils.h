@@ -4,6 +4,7 @@
 #ifdef __linux__
 #include <geometry_msgs/PoseStamped.h>
 #include <execinfo.h>
+#include <boost::stacktrace.hpp>
 #endif
 #include <vector>
 #include <cmath>
@@ -42,6 +43,17 @@ inline void print_stack_trace_and_abort() {
     fprintf(stderr, "-------------------\n");
     
     std::abort(); 
+}
+
+void print_stack_trace_and_abort() {
+    std::cerr << "=========================================\n";
+    std::cerr << "Fatal Error: Out of bounds or invalid access!\n";
+    std::cerr << "Stack trace:\n";
+    
+    std::cerr << boost::stacktrace::stacktrace() << '\n';
+    std::cerr << "=========================================\n";
+    
+    std::abort();
 }
 
 template <typename T, typename Allocator = std::allocator<T>>
