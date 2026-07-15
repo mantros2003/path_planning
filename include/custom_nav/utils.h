@@ -3,6 +3,7 @@
 
 #ifdef __linux__
 #include <geometry_msgs/PoseStamped.h>
+#include <execinfo.h>
 #endif
 #include <vector>
 #include <cmath>
@@ -30,6 +31,19 @@ inline double distance(T x1, T y1, T x2, T y2) {
     return std::sqrt(squared_dist(x1, y1, x2, y2));
 }
 
+inline void print_stack_trace_and_abort() {
+    fprintf(stderr, "\n[FATAL] SafeVector Out-of-Bounds Access Detected!\n");
+    fprintf(stderr, "--- STACK TRACE ---\n");
+    
+    void* callstack[128];
+    int frames = backtrace(callstack, 128);
+    backtrace_symbols_fd(callstack, frames, STDERR_FILENO);
+    
+    fprintf(stderr, "-------------------\n");
+    
+    std::abort(); 
+}
+
 template <typename T, typename Allocator = std::allocator<T>>
 class safeVec : public std::vector<T, Allocator> {
 public:
@@ -37,11 +51,13 @@ public:
 
     typename std::vector<T, Allocator>::reference
     operator[] (typename std::vector<T, Allocator>::size_type n) {
+        if (n >= this->size()) print_stack_trace_and_abort();
         return this->at(n);
     }
 
     typename std::vector<T, Allocator>::const_reference
     operator[] (typename std::vector<T, Allocator>::size_type n) const {
+        if (n >= this->size()) print_stack_trace_and_abort();
         return this->at(n);
     }
 };
