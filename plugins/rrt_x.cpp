@@ -1014,7 +1014,7 @@ void RRTXPlanner::verifyQueue(std::size_t node_idx) {
         ROS_WARN("[RRTXPlanner] Root is being added to queue");
         return;
     }
-    if (node_idx == Node::INVLAID_IDX) return;
+    if (node_idx == Node::INVALID_IDX) return;
 
     QKey key = makeKey(node_idx);
     auto it = queueMap_.find(node_idx);
