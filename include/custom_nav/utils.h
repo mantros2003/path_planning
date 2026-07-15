@@ -32,7 +32,7 @@ inline double distance(T x1, T y1, T x2, T y2) {
     return std::sqrt(squared_dist(x1, y1, x2, y2));
 }
 
-inline void print_stack_trace_and_abort_boost() {
+inline void print_stack_trace_and_abort() {
     fprintf(stderr, "\n[FATAL] SafeVector Out-of-Bounds Access Detected!\n");
     fprintf(stderr, "--- STACK TRACE ---\n");
     
@@ -45,7 +45,7 @@ inline void print_stack_trace_and_abort_boost() {
     std::abort(); 
 }
 
-void print_stack_trace_and_abort() {
+inline void print_stack_trace_and_abort_boost() {
     std::cerr << "=========================================\n";
     std::cerr << "Fatal Error: Out of bounds or invalid access!\n";
     std::cerr << "Stack trace:\n";
