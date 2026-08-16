@@ -21,7 +21,7 @@ const mat::Matrix<double>& getBasis(std::size_t d) {
 
     mat::Matrix<double> basis(d, 6);
     static constexpr std::array<double, 6> binom_coeff = {1, 5, 10, 10, 5, 1};
-    const mat::Matrix<double> t = mat::linspace(0, 1, d);
+    const mat::Matrix<double> t = mat::linspace(0.0, 1.0, d);
 
     for (std::size_t r = 0; r < d; r++) {
         for (std::size_t c = 0; c < 6; c++) {

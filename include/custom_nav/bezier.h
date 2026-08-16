@@ -1,3 +1,6 @@
+#ifndef BEZIER_H
+#define BEZIER_H
+
 #include <custom_nav/matrix.h>
 #include <custom_nav/mjetable.h>
 #include <unordered_map>
@@ -32,3 +35,5 @@ ProcessResult processWayPointsF(
     double);
 
 }
+
+#endif // BEZIER_H
