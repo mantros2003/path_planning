@@ -26,6 +26,7 @@ const mat::Matrix<double>& getBasis(std::size_t d) {
         for (std::size_t c = 0; c < 6; c++) {
             basis(r, c) = binom_coeff[c] * std::pow(t(0, r), c) * std::pow(1.0 - t(0, r), 5-c);
         }
+    }
 
     auto res = basis_cache.emplace(d, std::move(basis));
 
