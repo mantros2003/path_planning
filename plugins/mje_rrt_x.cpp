@@ -376,7 +376,7 @@ std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double,
     Point<double, 2> nearest_pt({nearest_node_state.x, nearest_node_state.y});
     std::vector<std::size_t> neighbors =
         this->kd_tree.radius_search(rand_pt, 1.5 * rand_pt.distance(nearest_pt));
-    sortVector<double, 2>(neighbors, this->nodes_, this->goal_);
+    sortVector(neighbors, this->nodes_, this->goal_);
 
     State random_state{rand_pt[0], rand_pt[1], 0};
     

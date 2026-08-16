@@ -17,7 +17,7 @@ mat::Matrix<double> discretizeBezierCurve(const mat::Matrix<double>&, int d = 10
 double computeMaxCurvatureNumeric(const mat::Matrix<double>&);
 std::pair<bool, double> getKcPosition(const mat::Matrix<double>& curvePoints, double kc = 3.0);
 // std::pair<mat::Matrix<double>, std::vector<double>> forwardPass(node::Node, std::vector<node::Node>&, double = 3.0);
-std::pair<std::vector<std::array<double, 3>>, std::vector<bool>>
+// std::pair<std::vector<std::array<double, 3>>, std::vector<bool>>
 // extractWaypoints(int, const std::vector<Node>&);
 // Structure to cleanly return the 3 output values
 struct ProcessResult {
