@@ -348,7 +348,7 @@ void MJERRTXPlanner::addPointToTree(State new_state, std::size_t near_idx) {
     for (std::size_t nbr_idx: neighbors) {
         Node& nbr = this->nodes_[nbr_idx];
 
-        if (!hasObstacle(p[0], p[1], nbr.state.x, nbr.state.y)) {
+        if (!hasObstacle(new_state.x, new_state.y, nbr.state.x, nbr.state.y)) {
             new_node.nbr_init.push_back(nbr_idx);
             nbr.nbr_running.push_back(this->nodes_.size() - 1);
         }
@@ -361,7 +361,7 @@ void MJERRTXPlanner::addPointToTree(State new_state, std::size_t near_idx) {
 
     // Add to the parents children list and to the kd tree
     this->nodes_[new_node.par_idx].children.push_back(this->nodes_.size() - 1);
-    this->kd_tree.insert(p, this->nodes_.size() - 1);
+    this->kd_tree.insert(Point<double, 2>({new_state.x, new_state.y}), this->nodes_.size() - 1);
 }
 
 /**
@@ -644,9 +644,12 @@ std::pair<std::size_t, double> MJERRTXPlanner::findBestParent(
         std::size_t child_idx, Vector<std::size_t>* neighbors) {
     Node& child_node = this->nodes_[child_idx];
 
+    Vector<std::size_t> _neighbors;
+
     if (neighbors == nullptr) {
-        neighbors = &this->kd_tree.radius_search(
+        _neighbors = this->kd_tree.radius_search(
             Point<double, 2>({child_node.state.x, child_node.state.y}), this->radius_);
+        neighbors = &_neighbors;
     }
 
     double best_cost = child_node.g;

@@ -37,7 +37,7 @@ const mat::Matrix<double>& getBasis(std::size_t d) {
 mat::Matrix<double> optimalAlphaBezierCP(
     const std::array<double, 3>& init_pose, 
     const std::array<double, 3>& end_pose, 
-    const ConstraintTable& table) 
+    const lt::ConstraintTable& table) 
 {
     // Poses: {x, y, theta}
     double dx = end_pose[0] - init_pose[0];
