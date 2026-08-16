@@ -12,7 +12,7 @@
 
 // Register as ROS plugin
 PLUGINLIB_EXPORT_CLASS(
-    custom_planner::RRTXPlanner,
+    custom_planner::MJERRTXPlanner,
     nav_core::BaseGlobalPlanner
 )
 
@@ -48,11 +48,11 @@ void MJERRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* cos
             utils::loadParamString(private_nh, "kappa_file", kappa_file) &&
             utils::loadParamString(private_nh, "singular_file", singular_file) &&
             utils::loadParamString(private_nh, "arclength_file", arclength_file)) {}
-        else { ROS_WARN("[MJERRTXPlanner] All necessary files do not exist") }
+        else { ROS_WARN("[MJERRTXPlanner] All necessary files do not exist"); }
 
         private_nh.param<std::vector<std::string>>(
                 "alpha_files", alpha_files, std::vector<std::string>());
-        if (alpha_files.size() < 4) { ROS_WARN("[MJERRTXPlanner] Need atleast 4 alpha LUTs") }
+        if (alpha_files.size() < 4) { ROS_WARN("[MJERRTXPlanner] Need atleast 4 alpha LUTs"); }
 
         this->constraint_table_.buildTable(
                 theta_file, kappa_file, singular_file, arclength_file, alpha_files);
@@ -70,7 +70,7 @@ void MJERRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* cos
     }
 }
 
-MJERRTXPlanner::makePlan(
+bool MJERRTXPlanner::makePlan(
     const geometry_msgs::PoseStamped& start,
     const geometry_msgs::PoseStamped& goal,
     std::vector<geometry_msgs::PoseStamped>& plan
@@ -204,7 +204,7 @@ State MJERRTXPlanner::sampleState() {
 }
 
 /* Set the values of all the costmap related constants */
-void RRTXPlanner::updateCostmapParams() {
+void MJERRTXPlanner::updateCostmapParams() {
     this->height_m_     = this->costmap_->getSizeInMetersY();
     this->width_m_      = this->costmap_->getSizeInMetersX();
     this->height_c_     = this->costmap_->getSizeInCellsY();
@@ -215,7 +215,7 @@ void RRTXPlanner::updateCostmapParams() {
 }
 
 /* Extract the path from the tree by moving from start to goal */
-bool RRTXPlanner::extractPath(
+bool MJERRTXPlanner::extractPath(
     const geometry_msgs::PoseStamped& start,
     const geometry_msgs::PoseStamped& goal,
     std::vector<geometry_msgs::PoseStamped>& plan,
@@ -300,7 +300,7 @@ bool MJERRTXPlanner::validatePoint(double x, double y) {
 }
 
 /* Checks if the goal is changed */
-bool RRTXPlanner::isNewGoal(double gx, double gy) {
+bool MJERRTXPlanner::isNewGoal(double gx, double gy) {
     return (gx != goal_[0]) || (gy != goal_[1]);
 }
 
@@ -308,7 +308,7 @@ bool RRTXPlanner::isNewGoal(double gx, double gy) {
  * Checks if point `p` is connected to the tree
  * Searches for points within `step_length_` of the start and chooses the best possible option
  */
-bool RRTXPlanner::isConnected(double sx, double sy) {
+bool MJERRTXPlanner::isConnected(double sx, double sy) {
     if (nodes_.empty()) return false;
 
     Point<double, 2> start_pt({sx, sy});
@@ -989,6 +989,39 @@ void MJERRTXPlanner::propogateDescendents() {
     }
 
     this->orphan_set_.clear();
+}
+
+/**
+ * We don't usually have start node in our tree
+ * So we use the next nearest unblocked node as a proxy for the start node
+ */
+std::size_t MJERRTXPlanner::findStartProxy() {
+    // Get the nearest node
+    // Can also use some other value, eg 2 * step_length_
+    double search_radius = this->radius_;
+    std::vector<std::size_t> local_neighbors =
+        this->kd_tree.radius_search(this->start_, this->search_radius);
+
+    double min_dist = std::numeric_limits<double>::infinity();
+    std::size_t best_visible_proxy = Node::INVALID_IDX;
+
+    for (std::size_t nbr_idx : local_neighbors) {
+        Node& nbr = this->nodes_[nbr_idx];
+
+        if (std::isinf(nbr.lmc)) continue;
+
+        Point<double, 2> nbr_pt({nbr.x, nbr.y});
+        // Check if we have a clear path to this neighbor
+        // And if we improve the previous cost
+        double dist = nbr.lmc + this->start_.distance(nbr_pt);
+
+        if (dist <= min_dist && !hasObstacle(this->start_, nbr_pt)) {
+            min_dist = dist;
+            best_visible_proxy = nbr_idx;
+        }
+    }
+
+    return best_visible_proxy;
 }
 
 /**

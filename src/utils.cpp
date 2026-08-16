@@ -26,7 +26,7 @@ double computePathLength(
     return total_length;
 }
 
-bool loadParamString(ros::NodeHandle& nh, std::string& param, std::string& output) {
+bool loadParamString(ros::NodeHandle& nh, std::string param, std::string& output) {
     return nh.getParam(param, output);
 }
 

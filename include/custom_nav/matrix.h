@@ -5,7 +5,7 @@
 
 namespace mat {
 
-inline constexpr double PI = 3.14159265358979323846;
+constexpr double PI = 3.14159265358979323846;
 
 /*
  * A light-weight matrix implementation
@@ -28,7 +28,7 @@ public:
 
     // Copy constructors
     Matrix(const Matrix&) = default;
-    MAtrix& operator=(const Matrix&) = default;     // Copy assignment
+    Matrix& operator=(const Matrix&) = default;     // Copy assignment
 
     // Move constructors
     Matrix(Matrix&& other) noexcept
@@ -90,15 +90,15 @@ public:
 
     void appendRows(mat::Matrix<T>&& other) {
         if (this->rows_ == 0 && this->cols_ == 0) {
-            this->rows = other.rows_; other.rows_ = 0;
-            this->cols = other.cols_; other.cols_ = 0;
-            this->data = std::move(other.data_);
+            this->rows_ = other.rows_; other.rows_ = 0;
+            this->cols_ = other.cols_; other.cols_ = 0;
+            this->data_ = std::move(other.data_);
             return;
         }
 
         assert(this->cols_ == other.cols_);
 
-        this->data.insert(
+        this->data_.insert(
             this->data_.end(),
             std::make_move_iterator(other.data_.begin()),
             std::make_move_iterator(other.data_end())
