@@ -342,7 +342,7 @@ void MJERRTXPlanner::addPointToTree(State new_state, std::size_t near_idx) {
     Node& near_node = this->nodes_[near_idx];
 
     // Get all points close to the node
-    std::vector<std::size_t> neighbors = this->kd_tree.radius_search(p, this->radius_);
+    std::vector<std::size_t> neighbors = this->kd_tree.radius_search(Point<double, 2>({new_state.x, new_state.y}), this->radius_);
 
     // Add neighbors
     for (std::size_t nbr_idx: neighbors) {
@@ -376,7 +376,7 @@ std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double,
     Point<double, 2> nearest_pt({nearest_node_state.x, nearest_node_state.y});
     std::vector<std::size_t> neighbors =
         this->kd_tree.radius_search(rand_pt, 1.5 * rand_pt.distance(nearest_pt));
-    sortVectorByDist<double, 2>(neighbors, this->nodes_, this->goal_);
+    sortVector<double, 2>(neighbors, this->nodes_, this->goal_);
 
     State random_state{rand_pt[0], rand_pt[1], 0};
     
@@ -384,7 +384,7 @@ std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double,
     for (std::size_t nbr_idx: neighbors) {
         Node& node = this->nodes_[nbr_idx];
 
-        double dx = node[1] - rand_pt[1], dy = node[0] - rand_pt[0];
+        double dx = node.x - rand_pt[0], dy = node.y - rand_pt[1];
         random_state.theta = std::atan2(dy, dx);
 
         double actualKmax;
@@ -414,50 +414,50 @@ std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double,
 
 // TODO: Check this function, if it is needed or not
 // and change the radius search line, make a point instead of using p
-void MJERRTXPlanner::rewirePointFeasible(std::size_t new_node_idx) {
-    Node& new_node = this->nodes_[new_node_idx];
-
-    double curr_cost = new_node.g;
-    std::size_t curr_par = new_node.par_idx;
-    double ang_org = new_node.state.theta;
-    double new_cost = std::numeric_limits<double>::infinity();
-
-    std::vector<std::size_t> neighbors = this->kd_tree.radius_search(p, this->radius_);
-
-    State random_state{rand_pt[0], rand_pt[1], 0};
-    for (std::size_t nbr_idx: neighbors) {
-        if (nbr_idx == new_node.par_idx || nbr_idx == new_node_idx) continue;
-
-        Node& nbr_node = this->nodes_[nbr_idx];
-
-        new_node.state.theta = std::atan2(nbr_node.state.y - new_node.state.y,
-                nbr_node.state.x - new_node.state.x);
-        double chord_length = std::hypot(nbr_node.state.y - new_node.state.y,
-                nbr_node.state.x - new_node.state.x);
-
-        double actualKmax; bool singular;
-        feasible = isFeasible(random_state, nbr_node.state, actualKmax, singular);
-
-        if (!feasible) continue;
-
-        double arc_length = getarclength(new_node.state, nbr_node.state);
-        double new_cost = nbr_node.g + arc_length;
-
-        if (new_cost < curr_cost) {
-            if (hasObstacle(nbr_node.state.x, nbr_node.state.y, 
-                        new_node.state.x, new_node.state.y)) continue;
-
-            curr_par = nbr_idx;
-            curr_cost = new_cost;
-            ang_org = new_node.state.theta;
-        }
-    }
-
-    remove_child(new_node.par_idx, new_node_idx);
-    new_node.par_idx = curr_par;
-    new_node.g = curr_cost;
-    add_child(new_node.par_idx, new_node_idx);
-}
+// void MJERRTXPlanner::rewirePointFeasible(std::size_t new_node_idx) {
+//     Node& new_node = this->nodes_[new_node_idx];
+// 
+//     double curr_cost = new_node.g;
+//     std::size_t curr_par = new_node.par_idx;
+//     double ang_org = new_node.state.theta;
+//     double new_cost = std::numeric_limits<double>::infinity();
+// 
+//     std::vector<std::size_t> neighbors = this->kd_tree.radius_search(p, this->radius_);
+// 
+//     State random_state{rand_pt[0], rand_pt[1], 0};
+//     for (std::size_t nbr_idx: neighbors) {
+//         if (nbr_idx == new_node.par_idx || nbr_idx == new_node_idx) continue;
+// 
+//         Node& nbr_node = this->nodes_[nbr_idx];
+// 
+//         new_node.state.theta = std::atan2(nbr_node.state.y - new_node.state.y,
+//                 nbr_node.state.x - new_node.state.x);
+//         double chord_length = std::hypot(nbr_node.state.y - new_node.state.y,
+//                 nbr_node.state.x - new_node.state.x);
+// 
+//         double actualKmax; bool singular;
+//         feasible = isFeasible(random_state, nbr_node.state, actualKmax, singular);
+// 
+//         if (!feasible) continue;
+// 
+//         double arc_length = getarclength(new_node.state, nbr_node.state);
+//         double new_cost = nbr_node.g + arc_length;
+// 
+//         if (new_cost < curr_cost) {
+//             if (hasObstacle(nbr_node.state.x, nbr_node.state.y, 
+//                         new_node.state.x, new_node.state.y)) continue;
+// 
+//             curr_par = nbr_idx;
+//             curr_cost = new_cost;
+//             ang_org = new_node.state.theta;
+//         }
+//     }
+// 
+//     remove_child(new_node.par_idx, new_node_idx);
+//     new_node.par_idx = curr_par;
+//     new_node.g = curr_cost;
+//     add_child(new_node.par_idx, new_node_idx);
+// }
 
 /**
  * Try to re-route the the neighbours through the new node
@@ -615,10 +615,10 @@ void MJERRTXPlanner::updateLMC(std::size_t v_idx) {
     
     Node& v = nodes_[v_idx];
     
-    std::pair<std::size_t, double> res = findBestParent(v_idx, v.nbr_running);
+    std::pair<std::size_t, double> res = findBestParent(v_idx, &v.nbr_running);
     std::size_t best_par_idx = res.first; double best_cost = res.second;
 
-    res = findBestParent(v_idx, v.nbr_init);
+    res = findBestParent(v_idx, &v.nbr_init);
     if (res.second < best_cost) {
         best_cost = res.second;
         best_par_idx = res.first;
@@ -646,7 +646,7 @@ std::pair<std::size_t, double> MJERRTXPlanner::findBestParent(
 
     if (neighbors == nullptr) {
         neighbors = &this->kd_tree.radius_search(
-            Point<double, 2>(child_node.state.x, child_node.state.y), this->radius_);
+            Point<double, 2>({child_node.state.x, child_node.state.y}), this->radius_);
     }
 
     double best_cost = child_node.g;
@@ -1157,10 +1157,10 @@ void MJERRTXPlanner::buildFreeCellList() {
 void MJERRTXPlanner::sortVector(std::vector<std::size_t>& points) {
     std::sort(points.begin(), points.end(),
             [&] (const std::size_t& a, const std::size_t& b) {
-                State& a_state = this->nodes[a].state;
-                State& b_state = this->nodes[b].state;
-                return utils::squared_dist<double>(a_state.x, a_state.y, this->goal_.x, this->goal_.y) <
-                utils::squared_dist<double>(b_state.x, b_state.y, this->goal_.x, this->goal_.y);
+                State& a_state = this->nodes_[a].state;
+                State& b_state = this->nodes_[b].state;
+                return utils::squared_dist<double>(a_state.x, a_state.y, this->goal_[0], this->goal_[1]) <
+                utils::squared_dist<double>(b_state.x, b_state.y, this->goal_[0], this->goal_[1]);
             });
 }
 

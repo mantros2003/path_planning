@@ -235,36 +235,36 @@ std::pair<bool, double> getKcPosition(const mat::Matrix<double>& curvePoints, do
 // }
 
 // Returns a pair: {wayPoints, changedList}
-std::pair<std::vector<std::array<double, 3>>, std::vector<bool>>
-extractWaypoints(int currentNodeIndex, const std::vector<Node>& vertices) {
-    std::vector<std::array<double, 3>> wayPoints;
-    std::vector<bool> changedList;
-
-    int currIdx = currentNodeIndex;
-
-    // Loop until we hit the root node (parent == -1)
-    while (vertices[currIdx].parent != -1) {
-        const Node& currentNode = vertices[currIdx];
-
-        changedList.push_back(currentNode.changed);
-        wayPoints.push_back(currentNode.pose);
-
-        // If this node was reached via a two-stage maneuver, insert intermediate pose m
-        // TODO: Change the via_m type
-        if (currentNode.via_m.has_value()) {
-            const auto& m = currentNode.via_m.value(); // Extract mx, my, mth, _, _
-            wayPoints.push_back({m[0], m[1], m[2]});
-            changedList.push_back(false); // m is not a "changed" waypoint
-        }
-
-        currIdx = currentNode.parent;
-    }
-
-    // Append the starting node's pose
-    wayPoints.push_back(vertices[0].pose);
-
-    return {wayPoints, changedList};
-}
+// std::pair<std::vector<std::array<double, 3>>, std::vector<bool>>
+// extractWaypoints(int currentNodeIndex, const std::vector<Node>& vertices) {
+//     std::vector<std::array<double, 3>> wayPoints;
+//     std::vector<bool> changedList;
+// 
+//     int currIdx = currentNodeIndex;
+// 
+//     // Loop until we hit the root node (parent == -1)
+//     while (vertices[currIdx].parent != -1) {
+//         const Node& currentNode = vertices[currIdx];
+// 
+//         changedList.push_back(currentNode.changed);
+//         wayPoints.push_back(currentNode.pose);
+// 
+//         // If this node was reached via a two-stage maneuver, insert intermediate pose m
+//         // TODO: Change the via_m type
+//         if (currentNode.via_m.has_value()) {
+//             const auto& m = currentNode.via_m.value(); // Extract mx, my, mth, _, _
+//             wayPoints.push_back({m[0], m[1], m[2]});
+//             changedList.push_back(false); // m is not a "changed" waypoint
+//         }
+// 
+//         currIdx = currentNode.parent;
+//     }
+// 
+//     // Append the starting node's pose
+//     wayPoints.push_back(vertices[0].pose);
+// 
+//     return {wayPoints, changedList};
+// }
 
 // Structure to cleanly return the 3 output values
 struct ProcessResult {
