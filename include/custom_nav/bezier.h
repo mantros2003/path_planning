@@ -10,7 +10,7 @@ static std::unordered_map<std::size_t, mat::Matrix<double>> basis_cache;
 double normalizeAngle(double);
 const mat::Matrix<double>& getBasis(std::size_t);
 mat::Matrix<double> optimalAlphaBezierCP(
-    const std::array<double, 3>&, const std::array<double, 3>&, const ConstraintTable&);
+    const std::array<double, 3>&, const std::array<double, 3>&, const lt::ConstraintTable&);
 mat::Matrix<double> getSymmetricQuinticCP(
         const std::array<double, 3>&, const std::array<double, 3>&);
 mat::Matrix<double> discretizeBezierCurve(const mat::Matrix<double>&, int d = 100);
