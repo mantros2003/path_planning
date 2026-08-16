@@ -1,3 +1,6 @@
+#ifndef MATRIX_H
+#define MATRIX_H
+
 #include <vector>
 #include <cassert>
 #include <cstddef>
@@ -294,3 +297,5 @@ Matrix<T> linspace (const T& start, const T& end, const std::size_t& num) {
 
 
 }
+
+#endif // MATRIX_H

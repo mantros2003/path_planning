@@ -996,7 +996,7 @@ std::size_t MJERRTXPlanner::findStartProxy() {
     // Can also use some other value, eg 2 * step_length_
     double search_radius = this->radius_;
     std::vector<std::size_t> local_neighbors =
-        this->kd_tree.radius_search(this->start_, this->search_radius);
+        this->kd_tree.radius_search(this->start_, search_radius);
 
     double min_dist = std::numeric_limits<double>::infinity();
     std::size_t best_visible_proxy = Node::INVALID_IDX;
