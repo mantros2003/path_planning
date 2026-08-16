@@ -266,13 +266,6 @@ std::pair<bool, double> getKcPosition(const mat::Matrix<double>& curvePoints, do
 //     return {wayPoints, changedList};
 // }
 
-// Structure to cleanly return the 3 output values
-struct ProcessResult {
-    mat::Matrix<double> smoothenPath;
-    std::vector<std::array<double, 2>> cut_points;
-    double kmaxPath;
-};
-
 ProcessResult processWayPointsF(
     const std::vector<std::array<double, 3>>& wayPoints,
     const ConstraintTable& curvatureTable,

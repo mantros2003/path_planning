@@ -384,7 +384,7 @@ std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double,
     for (std::size_t nbr_idx: neighbors) {
         Node& node = this->nodes_[nbr_idx];
 
-        double dx = node.x - rand_pt[0], dy = node.y - rand_pt[1];
+        double dx = node.state.x - rand_pt[0], dy = node.state.y - rand_pt[1];
         random_state.theta = std::atan2(dy, dx);
 
         double actualKmax;

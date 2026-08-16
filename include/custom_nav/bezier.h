@@ -27,7 +27,7 @@ struct ProcessResult {
 };
 
 ProcessResult processWayPointsF(
-    const std::vector<std::array<double, 3>>&, const ConstraintTable&,
+    const std::vector<std::array<double, 3>>&, const lt::ConstraintTable&,
     const std::vector<bool>&, // Unused in loop, preserved for signature match
     double);
 
