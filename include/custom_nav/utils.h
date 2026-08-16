@@ -8,6 +8,7 @@
 #include <vector>
 #include <cmath>
 #include <custom_nav/kd_tree_x.h>
+#include <custom_nav/mje_rrt_x.h>
 
 namespace utils {
 
@@ -61,7 +62,7 @@ public:
 template <typename T, std::size_t D>
 void sortVectorByDist(std::vector<std::size_t>& points, std::vector<Node>& nodes, const Point<T,D>& goal) {
     std::sort(points.begin(), points.end(),
-            [&goal] (const std::size_t& a, const std::size_t& b) {
+            [&goal, &nodes] (const std::size_t& a, const std::size_t& b) {
                 State& a_state = nodes[a].state;
                 State& b_state = nodes[b].state;
                 return utils::squared_dist<double>(a_state.x, a_state.y, goal.x, goal.y) <
