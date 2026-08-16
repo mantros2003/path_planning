@@ -1,4 +1,5 @@
 #include <custom_nav/matrix.h>
+#include <custom_nav/bezier.h>
 #include <unordered_map>
 #include <cmath>
 
@@ -27,11 +28,10 @@ const mat::Matrix<double>& getBasis(std::size_t d) {
         for (std::size_t c = 0; c < 6; c++) {
             basis(r, c) = binom_coeff[c] * std::pow(t(0, r), c) * std::pow(1.0 - t(0, r), 5-c);
         }
-    }
 
-    auto [it, inserted] = basis_cache.emplace(d, std::move(basis));
+    auto res = basis_cache.emplace(d, std::move(basis));
 
-    return it->second;
+    return res.first->second;
 }
 
 mat::Matrix<double> optimalAlphaBezierCP(
