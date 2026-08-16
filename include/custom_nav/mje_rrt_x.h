@@ -91,7 +91,8 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         rng(std::random_device{}()),// Initialize the random number genera with the random device
         rand01(0.0, 1.0),           // Initialize the distribution
         radius_(0.3),
-        start_proxy(Node::INVALID_IDX)
+        start_proxy(Node::INVALID_IDX),
+        kc(3.0)
         {}
 
         void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
@@ -151,10 +152,11 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
 
         // SI-QBC helpers
         lt::ConstraintTable constraint_table_;
+        double kc;
 
         // Functions
         void updateCostmapParams();
-        bool addPointToTree(State, std::size_t);
+        void addPointToTree(State, std::size_t);
         bool extractPath(const geometry_msgs::PoseStamped&, const geometry_msgs::PoseStamped&, std::vector<geometry_msgs::PoseStamped>&, ros::Time);
         bool validatePoint(double, double);
         std::pair<std::size_t, State> feasibleNearAndSteer(Point<double, 2>);
