@@ -4,7 +4,8 @@
 #include <vector>
 #include <string>
 #include <cstdint>
-#include <numeric>
+#include <cmath>
+#include <limits>
 #include <utility>
 
 namespace lt {
