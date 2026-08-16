@@ -116,9 +116,7 @@ mat::Matrix<double> getSymmetricQuinticCP(const std::array<double, 3>& init_pose
     return CP;
 }
 
-mat::Matrix<double> discretizeBezierCurve(
-    const mat::Matrix<double> &control_points, int d = 100
-) {
+mat::Matrix<double> discretizeBezierCurve(const mat::Matrix<double> &control_points, int d) {
     return getBasis(d) * control_points;
 }
 
@@ -165,7 +163,7 @@ double computeMaxCurvatureNumeric(const mat::Matrix<double>& curvePoints) {
     return max_cur;
 }
 
-std::pair<bool, double> getKcPosition(const mat::Matrix<double>& curvePoints, double kc = 3.0) {
+std::pair<bool, double> getKcPosition(const mat::Matrix<double>& curvePoints, double kc) {
     assert(curvePoints.cols() >= 2 && curvePoints().rows() >=3);
 
     std::size_t n = curvePoints.rows();
@@ -209,32 +207,32 @@ std::pair<bool, double> getKcPosition(const mat::Matrix<double>& curvePoints, do
     return std::pair<bool, double>(true, 0.0);
 }
 
-std::pair<mat::Matrix<double>, std::vector<double>> forwardPass(node::Node curr_node, std::vector<node::Node>& vertices, double kmax = 3.0) {
-    std::vector<double> cutPoints, smoothPath;
-    std::size_t curr_idx = curr_node.index;
-    std::size_t par_idx = vectices[curr_node.parent].index;
-
-    while (i != 0) {
-        std::array<double, 3>& init_pose = vertices[i].pose;
-        std::array<double, 3>& next_pose = vertices[j].pose;
-
-        mat::Matrix<double> controlPoints = getSymmetricQuinticCP(init_pose, next_pose);
-        mat::Matrix<double> curvePoints = discretizeBezierCurve(contorlPoints);
-
-        std::par<bool, double> check = getKcPosition(curvePoints);
-        if (feasible) i = j;
-        else {
-            // TODO
-        }
-
-        smoothPath.addRows(curvePoints);
-
-        if (j!= 0) j = vertices[j].parent;
-    }
-
-    // TODO
-    return std::pair<>(smoothPath, cutPoints);
-}
+// std::pair<mat::Matrix<double>, std::vector<double>> forwardPass(node::Node curr_node, std::vector<node::Node>& vertices, double kmax = 3.0) {
+//     std::vector<double> cutPoints, smoothPath;
+//     std::size_t curr_idx = curr_node.index;
+//     std::size_t par_idx = vectices[curr_node.parent].index;
+// 
+//     while (i != 0) {
+//         std::array<double, 3>& init_pose = vertices[i].pose;
+//         std::array<double, 3>& next_pose = vertices[j].pose;
+// 
+//         mat::Matrix<double> controlPoints = getSymmetricQuinticCP(init_pose, next_pose);
+//         mat::Matrix<double> curvePoints = discretizeBezierCurve(contorlPoints);
+// 
+//         std::par<bool, double> check = getKcPosition(curvePoints);
+//         if (feasible) i = j;
+//         else {
+//             // TODO
+//         }
+// 
+//         smoothPath.addRows(curvePoints);
+// 
+//         if (j!= 0) j = vertices[j].parent;
+//     }
+// 
+//     // TODO
+//     return std::pair<>(smoothPath, cutPoints);
+// }
 
 // Returns a pair: {wayPoints, changedList}
 std::pair<std::vector<std::array<double, 3>>, std::vector<bool>>

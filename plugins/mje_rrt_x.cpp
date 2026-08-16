@@ -1,4 +1,5 @@
 #include <custom_nav/mje_rrt_x.h>
+#include <custom_nav/bezier.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/line_iterator.h>
 #include <visualization_msgs/Marker.h>
@@ -375,7 +376,7 @@ std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double,
     Point<double, 2> nearest_pt({nearest_node_state.x, nearest_node_state.y});
     std::vector<std::size_t> neighbors =
         this->kd_tree.radius_search(rand_pt, 1.5 * rand_pt.distance(nearest_pt));
-    utils::sortVectorByDist<double, 2>(neighbors, this->nodes_, this->goal_);
+    sortVectorByDist<double, 2>(neighbors, this->nodes_, this->goal_);
 
     State random_state{rand_pt[0], rand_pt[1], 0};
     
@@ -1155,7 +1156,7 @@ void MJERRTXPlanner::buildFreeCellList() {
 /* Sorts the vector by distance to goal */
 void MJERRTXPlanner::sortVector(std::vector<std::size_t>& points) {
     std::sort(points.begin(), points.end(),
-            [] (const std::size_t& a, const std::size_t& b) {
+            [&] (const std::size_t& a, const std::size_t& b) {
                 State& a_state = this->nodes[a].state;
                 State& b_state = this->nodes[b].state;
                 return utils::squared_dist<double>(a_state.x, a_state.y, this->goal_.x, this->goal_.y) <
