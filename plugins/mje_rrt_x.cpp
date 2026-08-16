@@ -347,15 +347,13 @@ void MJERRTXPlanner::addPointToTree(State new_state, std::size_t near_idx) {
     for (std::size_t nbr_idx: neighbors) {
         Node& nbr = this->nodes_[nbr_idx];
 
-        if (!hasObstacle(p[0], p[1], nbr.x, nbr.y)) {
+        if (!hasObstacle(p[0], p[1], nbr.state.x, nbr.state.y)) {
             new_node.nbr_init.push_back(nbr_idx);
             nbr.nbr_running.push_back(this->nodes_.size() - 1);
         }
     }
 
-    double arclength = getarclength(random_state, node.state);
-
-    random_node.g = node.g + arclength;
+    double arclength = getarclength(new_state, near_node.state);
 
     new_node.lmc = near_node.lmc + arclength;
     new_node.par_idx = near_idx;
@@ -377,7 +375,7 @@ std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double,
     Point<double, 2> nearest_pt({nearest_node_state.x, nearest_node_state.y});
     std::vector<std::size_t> neighbors =
         this->kd_tree.radius_search(rand_pt, 1.5 * rand_pt.distance(nearest_pt));
-    utils::sortVectorByDist<double, 2>(neighbors, this->goal_);
+    utils::sortVectorByDist<double, 2>(neighbors, this->nodes_, this->goal_);
 
     State random_state{rand_pt[0], rand_pt[1], 0};
     
@@ -629,7 +627,7 @@ void MJERRTXPlanner::updateLMC(std::size_t v_idx) {
 
     if (v.par_idx != best_par_idx) {
         if (v.par_idx != Node::INVALID_IDX) this->nodes_[v.par_idx].removeChild(v_idx);
-        if (best_par_idx != Node::INVALID_IDX) this->nodes_[best_parent].children.push_back(v_idx);
+        if (best_par_idx != Node::INVALID_IDX) this->nodes_[best_par_idx].children.push_back(v_idx);
         v.par_idx = best_par_idx;
     }
     v.lmc = best_cost;
@@ -642,7 +640,7 @@ void MJERRTXPlanner::updateLMC(std::size_t v_idx) {
  * Returns the best parent and the associated cost
  */
 std::pair<std::size_t, double> MJERRTXPlanner::findBestParent(
-        std::size_t child_idx, std::vector<std::size_t>* neighbors) {
+        std::size_t child_idx, Vector<std::size_t>* neighbors) {
     Node& child_node = this->nodes_[child_idx];
 
     if (neighbors == nullptr) {

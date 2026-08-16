@@ -59,10 +59,13 @@ public:
 };
 
 template <typename T, std::size_t D>
-void sortVectorByDist(std::vector<Point<T,D>>& points, const Point<T,D>& goal) {
+void sortVectorByDist(std::vector<std::size_t>& points, std::vector<Node>& nodes, const Point<T,D>& goal) {
     std::sort(points.begin(), points.end(),
-            [&goal] (const Point<T,D>& a, const Point<T,D>& b) {
-                a.squaredDistance(goal) < b.squaredDistance(goal);
+            [&goal] (const std::size_t& a, const std::size_t& b) {
+                State& a_state = nodes[a].state;
+                State& b_state = nodes[b].state;
+                return utils::squared_dist<double>(a_state.x, a_state.y, goal.x, goal.y) <
+                utils::squared_dist<double>(b_state.x, b_state.y, goal.x, goal.y);
             });
 }
 

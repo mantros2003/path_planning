@@ -123,7 +123,7 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         std::size_t start_proxy;
 
         // Tree and node containers
-        Vector<struct Node> nodes_;                         // Stores all the nodes 
+        Vector<Node> nodes_;                                // Stores all the nodes 
         std::unordered_set<std::size_t> orphan_set_;        // All the nodes which are cut-off from the main  tra
 
         // Hyperparams
@@ -166,7 +166,7 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         void cullNeighbors(std::size_t);
         void updateLMC(std::size_t);
         std::pair<std::size_t, double> findBestParent(
-                std::size_t, std::vector<std::size_t>* = nullptr);
+                std::size_t, Vector<std::size_t>* = nullptr);
         void updateObstacles();
         void removeObstacle(unsigned int);
         void addObstacle(unsigned int);
