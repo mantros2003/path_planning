@@ -880,7 +880,7 @@ double MJERRTXPlanner::getarclength(State child_state, State par_state) {
 
     double chord_angle = std::atan2(dy, dx);
     double theta0 = bezier::normalizeAngle(child_state.theta - chord_angle);
-    double theta5 = bezier::normalizeAngle(par_state.theta - chord_nagle);
+    double theta5 = bezier::normalizeAngle(par_state.theta - chord_angle);
 
     return this->constraint_table_.getarclength(theta0, theta5) * chord_length;
 }
@@ -1150,6 +1150,17 @@ void MJERRTXPlanner::buildFreeCellList() {
                 this->free_cells.emplace_back(x, y);
         }
     }
+}
+
+/* Sorts the vector by distance to goal */
+void MJERRTXPlanner::sortVector(std::vector<std::size_t>& points) {
+    std::sort(points.begin(), points.end(),
+            [] (const std::size_t& a, const std::size_t& b) {
+                State& a_state = this->nodes[a].state;
+                State& b_state = this->nodes[b].state;
+                return utils::squared_dist<double>(a_state.x, a_state.y, this->goal_.x, this->goal_.y) <
+                utils::squared_dist<double>(b_state.x, b_state.y, this->goal_.x, this->goal_.y);
+            });
 }
 
 /**

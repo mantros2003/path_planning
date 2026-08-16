@@ -276,7 +276,7 @@ bool RRTXPlanner::addPointToTree(Point<double, 2> p, std::size_t near_idx) {
     Node& near_node = this->nodes_[near_idx];
 
     // Get all points close to the node
-    std::vector<std::size_t> neighbors = this->kd_tree.radius_search(p, radius_);
+    std::vector<std::size_t> neighbors = this->kd_tree.radius_search(p, this->radius_);
 
     // Find parent, node that has the least cost
     for (std::size_t nbr_idx: neighbors) {

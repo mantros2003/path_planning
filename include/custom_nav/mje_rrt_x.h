@@ -192,6 +192,7 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         double squaredDistance(const std::size_t, const std::size_t) const;
         double distance(const std::size_t, const std::size_t) const;
         void buildTreeMarker(const std::string& frame_id = "map");
+        void sortVector(std::vector<std::size_t>&);
 };
 
 } // namespace custom_nav
