@@ -43,9 +43,9 @@ public:
     operator[] (typename std::vector<T, Allocator>::size_type n) {
         if (n >= this->size()) {
             fprintf(stderr, "writing oob at index: %lu in a vector of size: %lu", n, this->size());
-            print_stack_trace_and_abort_boost();
+            // print_stack_trace_and_abort_boost();
         }
-        return this->at(n);
+        return std::vector<T, Allocator>::operator[](n);
     }
 
     typename std::vector<T, Allocator>::const_reference
