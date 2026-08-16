@@ -67,6 +67,10 @@ void RRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* costma
 }
 
 // Main function that plans the trajectory
+/**
+ * Main function that returns a set of points for the robot to follow
+ * Samples from state space and build the tree
+ */
 bool RRTXPlanner::makePlan(
     const geometry_msgs::PoseStamped& start,
     const geometry_msgs::PoseStamped& goal,

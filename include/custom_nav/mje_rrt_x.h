@@ -1,18 +1,17 @@
-#ifndef CUSTOM_NAV_RRTX_PLANNER_H
-#define CUSTOM_NAV_RRTX_PLANNER_H
+#ifndef CUSTOM_NAV_MJE_RRTX_PLANNER_H
+#define CUSTOM_NAV_MJE_RRTX_PLANNER_H
 
-#ifdef __linux__
 #include <ros/ros.h>
 #include <costmap_2d/costmap_2d.h>
 #include <costmap_2d/costmap_2d_ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_core/base_global_planner.h>
 #include <nav_msgs/Path.h>
-#include <custom_nav/RRTXStats.h>
-#endif
 
+#include <custom_nav/RRTXStats.h>
 #include <custom_nav/kd_tree_x.h>
 #include <custom_nav/utils.h>
+#include <custom_nav/mjetable.h>
 
 #include <vector>
 #include <set>
@@ -34,40 +33,33 @@
 
 namespace custom_planner {
 
-/**
- * Structure to store the information needed for the RRTx algorithm
- */
+struct State {
+    double x, y, theta;
+};
+
 struct Node {
-    double x, y;
+    State state;
     std::size_t par_idx;
-    bool in_queue;  // Indicates if it is in the priority queue
+    bool in_queue;
+    bool is_xi;
 
-    double g;       // Current estimate of cost-to-goal
-    double lmc;     // Look ahead cost-to-goal
+    double g;
+    double lmc;
 
-    // We are using unsigned int for storing index of the nodes
-    // Using only one container for in and out as graph will be symmetric
-    Vector<std::size_t> nbr_init;                              // Initial neighbors
-    Vector<std::size_t> nbr_running;                           // Neighbors within r(|V|)
-    std::set<std::size_t> blocked_nbrs;                             // Neighbors to whom distance is inf
+    Vector<std::size_t> nbr_init;
+    Vector<std::size_t> nbr_running;
+    std::set<std::size_t> blocked_nbrs;
     Vector<std::size_t> children;
 
-    // To indicate invalid index
     static constexpr std::size_t INVALID_IDX = std::numeric_limits<std::size_t>::max();
 
-    // Constructors
-    // Default
-    Node()
-        : x(0.0), y(0.0), par_idx(INVALID_IDX),
-          g(std::numeric_limits<double>::infinity()),
-          lmc(std::numeric_limits<double>::infinity()),
-          in_queue(false) {}
-    
-    Node(double start_x, double start_y) 
-        : x(start_x), y(start_y), par_idx(INVALID_IDX), 
+    Node(double start_x = 0.0, double start_y = 0.0, double theta = 0.0) 
+        : state{start_x, start_y, theta}, par_idx(INVALID_IDX), 
           g(std::numeric_limits<double>::infinity()), 
           lmc(std::numeric_limits<double>::infinity()), 
-          in_queue(false) {}
+          in_queue(false), is_xi(false) {}
+
+    void removeChild(std::size_t);
 };
 
 struct QKey {
@@ -81,20 +73,23 @@ struct QKey {
     }
 };
 
-class RRTXPlanner : public nav_core::BaseGlobalPlanner
+class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
 {
     public:
-        RRTXPlanner() 
+        MJERRTXPlanner() 
         : costmap_(nullptr), initialized_(false), planned_(false),
-        height_m_(0), width_m_(0), height_c_(0), width_c_(0),
+        height_m_(0.0), width_m_(0.0), height_c_(0), width_c_(0),
+        origin_x(0.0), origin_y(0.0), resolution_(0.0),
+        sampling_min_x_(0.0), sampling_max_x_(0.0),
+        sampling_min_y_(0.0), sampling_max_y_(0.0),
         rad_const_(4.0),
         obstacle_cost_threshold_(1),
         step_length_(0.2),          // Default edge length
         goal_tolerance_(0.2),       // Default tolerance to reach goal
         epsilon_(0.1),              // Default epsilon for collision checking/math
         max_iters_(6000),           // Default maximum iterations before giving up
-        rng{dev()},                 // Initialize the random number genera with the random device
-        rand01{0.0, 1.0},           // Initialize the distribution
+        rng(std::random_device{}()),// Initialize the random number genera with the random device
+        rand01(0.0, 1.0),           // Initialize the distribution
         radius_(0.3),
         start_proxy(Node::INVALID_IDX)
         {}
@@ -140,9 +135,8 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         unsigned char obstacle_cost_threshold_; // Treat all grids with cost more than this as an obstacle
 
         // Ranom number generators
-        std::random_device dev;
-        std::mt19937 rng{dev()};
-        std::uniform_real_distribution<double> rand01{0.0, 1.0};
+        std::mt19937 rng;
+        std::uniform_real_distribution<double> rand01;
 
         // Global containers
         kdTree<double, 2> kd_tree;
@@ -154,6 +148,9 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         // Publishers
         ros::Publisher tree_pub_;           // For visualising RRTx tree
         ros::Publisher stats_pub_;          // For publishing stats
+
+        // SI-QBC helpers
+        lt::ConstraintTable constraint_table_;
 
         // Functions
         void updateCostmapParams();
@@ -190,6 +187,6 @@ class RRTXPlanner : public nav_core::BaseGlobalPlanner
         void buildTreeMarker(const std::string& frame_id = "map");
 };
 
-} // namespace custom_planner
+} // namespace custom_nav
 
-#endif //CUSTOM_NAV_RRTX_PLANNER_H
+#endif // CUSTOM_NAV_MJE_RRTX_PLANNER_H

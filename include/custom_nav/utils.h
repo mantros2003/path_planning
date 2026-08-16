@@ -1,23 +1,23 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#ifdef __linux__
 #include <geometry_msgs/PoseStamped.h>
-#include <execinfo.h>
+#include <ros/ros.h>
 #include <boost/stacktrace.hpp>
-#endif
+#include <algorithm>
 #include <vector>
 #include <cmath>
+#include <custom_nav/kd_tree_x.h>
 
 namespace utils {
 
-#ifdef __linux__
-/**
- * Helper function to compute the path length of the generated path
- */
+// Declarations
 double computePathLength(const std::vector<geometry_msgs::PoseStamped>&);
-#endif
+inline void print_stack_trace_and_abort();
+inline void print_stack_trace_and_abort_boost();
+bool loadParamString(ros::NodeHandle& nh, std::string& param, std::string& output);
 
+// Implemenrarions
 /* Generic function to calculate the square of euclidean distance between points */
 template <typename T>
 inline double squared_dist(T x1, T y1, T x2, T y2) {
@@ -32,30 +32,8 @@ inline double distance(T x1, T y1, T x2, T y2) {
     return std::sqrt(squared_dist(x1, y1, x2, y2));
 }
 
-inline void print_stack_trace_and_abort() {
-    fprintf(stderr, "\n[FATAL] SafeVector Out-of-Bounds Access Detected!\n");
-    fprintf(stderr, "--- STACK TRACE ---\n");
-    
-    void* callstack[128];
-    int frames = backtrace(callstack, 128);
-    backtrace_symbols_fd(callstack, frames, STDERR_FILENO);
-    
-    fprintf(stderr, "-------------------\n");
-    
-    std::abort(); 
-}
-
-inline void print_stack_trace_and_abort_boost() {
-    std::cerr << "=========================================\n";
-    std::cerr << "Fatal Error: Out of bounds or invalid access!\n";
-    std::cerr << "Stack trace:\n";
-    
-    std::cerr << boost::stacktrace::stacktrace() << '\n';
-    std::cerr << "=========================================\n";
-    
-    std::abort();
-}
-
+// Class implementations
+/* Thin wrapper over std::vector that checks against OOB access */
 template <typename T, typename Allocator = std::allocator<T>>
 class safeVec : public std::vector<T, Allocator> {
 public:
@@ -79,6 +57,14 @@ public:
         return this->at(n);
     }
 };
+
+template <typename T, std::size_t D>
+sortVectorByDist(std::vector<Point<T,D>>& points, const Point<T,D>& goal) {
+    std::sort(points.begin(), points.end(),
+            [&goal] (const Point<T,D>& a, const Point<T,D>& b) {
+                a.squaredDistance(goal) < b.squaredDistance(goal);
+            });
+}
 
 }
 
