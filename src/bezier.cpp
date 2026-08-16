@@ -5,8 +5,6 @@
 
 namespace bezier {
 
-static std::unordered_map<std::size_t, mat::Matrix<double>> basis_cache;
-
 /* Normalize angle to [-pi, pi] */
 double normalizeAngle(double angle) {
     angle = std::fmod(angle + mat::PI, 2.0 * mat::PI);
