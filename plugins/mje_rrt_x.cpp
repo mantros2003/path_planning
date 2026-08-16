@@ -99,7 +99,7 @@ bool MJERRTXPlanner::makePlan(
         root_node.g = 0.0;
         root_node.lmc = 0.0;
         this->nodes_.push_back(root_node);
-        this->kd_tree.insert(Point<double, 2>({root_node.x, root_node.y}));
+        this->kd_tree.insert(Point<double, 2>({root_node.state.x, root_node.state.y}));
 
         this->planned_ = false;
 
@@ -195,13 +195,13 @@ bool MJERRTXPlanner::makePlan(
 }
 
 /* Returns a random state */
-State MJERRTXPlanner::sampleState() {
-    State random_state(this->rand_state_x_(),
-                       this->rand_state_y_(),
-                       this->rand_state_theta_());
-
-    return random_state;
-}
+// State MJERRTXPlanner::sampleState() {
+//     State random_state(this->rand_state_x_(),
+//                        this->rand_state_y_(),
+//                        this->rand_state_theta_());
+// 
+//     return random_state;
+// }
 
 /* Set the values of all the costmap related constants */
 void MJERRTXPlanner::updateCostmapParams() {
@@ -645,18 +645,18 @@ void MJERRTXPlanner::updateLMC(std::size_t v_idx) {
  * Returns the best parent and the associated cost
  */
 std::pair<std::size_t, double> MJERRTXPlanner::findBestParent(
-        std::size_t child_idx, std::vector<std::size_t>* neighbors = nullptr) {
+        std::size_t child_idx, std::vector<std::size_t>* neighbors) {
     Node& child_node = this->nodes_[child_idx];
 
     if (neighbors == nullptr) {
-        neighbors = this->kd_tree.radius_search(
+        neighbors = &this->kd_tree.radius_search(
             Point<double, 2>(child_node.state.x, child_node.state.y), this->radius_);
     }
 
     double best_cost = child_node.g;
     std::size_t best_par = child_node.par_idx;
 
-    for (std::size_t nbr_idx: neighbors) {
+    for (std::size_t nbr_idx: *neighbors) {
         if (nbr_idx == child_idx || nbr_idx == child_node.par_idx) continue;
 
         Node& nbr_node = this->nodes_[nbr_idx];

@@ -15,7 +15,7 @@ namespace utils {
 double computePathLength(const std::vector<geometry_msgs::PoseStamped>&);
 inline void print_stack_trace_and_abort();
 inline void print_stack_trace_and_abort_boost();
-bool loadParamString(ros::NodeHandle& nh, std::string& param, std::string& output);
+bool loadParamString(ros::NodeHandle& nh, std::string param, std::string& output);
 
 // Implemenrarions
 /* Generic function to calculate the square of euclidean distance between points */

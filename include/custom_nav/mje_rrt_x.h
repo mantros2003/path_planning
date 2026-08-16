@@ -154,17 +154,22 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
 
         // Functions
         void updateCostmapParams();
-        bool addPointToTree(Point<double, 2>, std::size_t);
+        bool addPointToTree(State, std::size_t);
         bool extractPath(const geometry_msgs::PoseStamped&, const geometry_msgs::PoseStamped&, std::vector<geometry_msgs::PoseStamped>&, ros::Time);
+        bool validatePoint(double, double);
+        std::pair<std::size_t, State> feasibleNearAndSteer(Point<double, 2>);
         void reduceInconsistency();
         void flushQueue();
         void rewireNeighbors(std::size_t);
         void cullNeighbors(std::size_t);
         void updateLMC(std::size_t);
+        std::pair<std::size_t, double> findBestParent(
+                std::size_t, std::vector<std::size_t>* = nullptr);
         void updateObstacles();
         void removeObstacle(unsigned int);
         void addObstacle(unsigned int);
-        Point<double, 2> steer(double, double, double, double);
+        bool isFeasible(State, State, double&, bool&);
+        double getarclength(State, State);
         bool isNewGoal(double, double);
         void resetTree();
         bool isConnected(double, double);
