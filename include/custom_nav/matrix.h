@@ -104,7 +104,7 @@ public:
         this->data_.insert(
             this->data_.end(),
             std::make_move_iterator(other.data_.begin()),
-            std::make_move_iterator(other.data_end())
+            std::make_move_iterator(other.data_.end())
         );
 
         this->rows_ += other.rows_; other.rows_ = 0;
