@@ -2,6 +2,7 @@
 #include <custom_nav/bezier.h>
 #include <unordered_map>
 #include <cmath>
+#include <algorithm>
 
 namespace bezier {
 
@@ -267,7 +268,7 @@ std::pair<bool, double> getKcPosition(const mat::Matrix<double>& curvePoints, do
 
 ProcessResult processWayPointsF(
     const std::vector<std::array<double, 3>>& wayPoints,
-    const ConstraintTable& curvatureTable,
+    const lt::ConstraintTable& curvatureTable,
     const std::vector<bool>& changedList, // Unused in loop, preserved for signature match
     double kc) 
 {
@@ -276,7 +277,7 @@ ProcessResult processWayPointsF(
     
     // Optimal path storage using Matrix
     mat::Matrix<double> smoothenPath(0, 2);
-    smoothenPath.reserve(wayPoints.size() * 100 * 2); // Pre-allocate to prevent reallocation
+    // smoothenPath.reserve(wayPoints.size() * 100 * 2); // Pre-allocate to prevent reallocation
 
     // Helper lambda for angle normalization
     auto normalizeAngle = [](double angle) {
@@ -315,10 +316,10 @@ ProcessResult processWayPointsF(
 
         // Check for curvature violations
         if (kmax > kc + 1e-5) {
-            std::cout << "poses where violation occured: " 
-                      << "[" << init_pose[0] << ", " << init_pose[1] << ", " << init_pose[2] << "] "
-                      << "[" << end_pose[0] << ", " << end_pose[1] << ", " << end_pose[2] << "]\n";
-            std::cout << "the max curvature hit is: " << kmax << '\n';
+            // std::cout << "poses where violation occured: " 
+            //           << "[" << init_pose[0] << ", " << init_pose[1] << ", " << init_pose[2] << "] "
+            //           << "[" << end_pose[0] << ", " << end_pose[1] << ", " << end_pose[2] << "]\n";
+            // std::cout << "the max curvature hit is: " << kmax << '\n';
             
             cut_points.push_back({init_pose[0], init_pose[1]});
             cut_points.push_back({end_pose[0], end_pose[1]});
@@ -330,7 +331,7 @@ ProcessResult processWayPointsF(
         mat::Matrix<double> curvePoints = discretizeBezierCurve(controlPoints);
 
         // Move the curvePoints into the smoothenPath matrix dynamically
-        smoothenPath.appendRowWise(std::move(curvePoints));
+        smoothenPath.appendRows(std::move(curvePoints));
         
         i = i + 1;
     }

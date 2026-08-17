@@ -12,7 +12,7 @@ namespace lt {
 
 int ConstraintTable::getIndex(double theta) const {
     int idx = static_cast<int>(std::floor((theta - theta_rad_(0, 0)) / dtheta_));
-    return std::max(0, std::min(idx, n_ - 1));
+    return std::max(0, std::min<int>(idx, n_ - 1));
 }
 
 ConstraintTable::ConstraintTable(
