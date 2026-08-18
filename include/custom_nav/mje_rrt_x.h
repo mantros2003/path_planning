@@ -33,6 +33,8 @@
 
 namespace custom_planner {
 
+namespace mje {
+
 struct State {
     double x, y, theta;
 };
@@ -53,10 +55,10 @@ struct Node {
 
     static constexpr std::size_t INVALID_IDX = std::numeric_limits<std::size_t>::max();
 
-    Node(double start_x = 0.0, double start_y = 0.0, double theta = 0.0) 
-        : state{start_x, start_y, theta}, par_idx(INVALID_IDX), 
-          g(std::numeric_limits<double>::infinity()), 
-          lmc(std::numeric_limits<double>::infinity()), 
+    Node(double start_x = 0.0, double start_y = 0.0, double theta = 0.0)
+        : state{start_x, start_y, theta}, par_idx(INVALID_IDX),
+          g(std::numeric_limits<double>::infinity()),
+          lmc(std::numeric_limits<double>::infinity()),
           in_queue(false), is_xi(false) {}
 
     void removeChild(std::size_t);
@@ -72,6 +74,8 @@ struct QKey {
         return index < other.index;
     }
 };
+
+} // namespace mje
 
 class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
 {
@@ -91,7 +95,7 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         rng(std::random_device{}()),// Initialize the random number genera with the random device
         rand01(0.0, 1.0),           // Initialize the distribution
         radius_(0.3),
-        start_proxy(Node::INVALID_IDX),
+        start_proxy(mje::Node::INVALID_IDX),
         kc(3.0)
         {}
 
@@ -123,7 +127,7 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         std::size_t start_proxy;
 
         // Tree and node containers
-        Vector<Node> nodes_;                                // Stores all the nodes 
+        Vector<mje::Node> nodes_;                                // Stores all the nodes 
         std::unordered_set<std::size_t> orphan_set_;        // All the nodes which are cut-off from the main  tra
 
         // Hyperparams
@@ -143,8 +147,8 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         kdTree<double, 2> kd_tree;
 
         // Containers for keeping track of inconsistent nodes
-        std::set<QKey> queue_;
-        std::unordered_map<std::size_t, QKey> queueMap_;
+        std::set<mje::QKey> queue_;
+        std::unordered_map<std::size_t, mje::QKey> queueMap_;
 
         // Publishers
         ros::Publisher tree_pub_;           // For visualising RRTx tree
@@ -156,10 +160,10 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
 
         // Functions
         void updateCostmapParams();
-        void addPointToTree(State, std::size_t);
+        void addPointToTree(mje::State, std::size_t);
         bool extractPath(const geometry_msgs::PoseStamped&, const geometry_msgs::PoseStamped&, std::vector<geometry_msgs::PoseStamped>&, ros::Time);
         bool validatePoint(double, double);
-        std::pair<std::size_t, State> feasibleNearAndSteer(Point<double, 2>);
+        std::pair<std::size_t, mje::State> feasibleNearAndSteer(Point<double, 2>);
         void reduceInconsistency();
         void flushQueue();
         void rewireNeighbors(std::size_t);
@@ -170,8 +174,8 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         void updateObstacles();
         void removeObstacle(unsigned int);
         void addObstacle(unsigned int);
-        bool isFeasible(State, State, double&, bool&);
-        double getarclength(State, State);
+        bool isFeasible(mje::State, mje::State, double&, bool&);
+        double getarclength(mje::State, mje::State);
         bool isNewGoal(double, double);
         void resetTree();
         bool isConnected(double, double);
@@ -183,8 +187,8 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         void propogateDescendents();
         void verifyOrphan(std::size_t);
         void verifyQueue(std::size_t);
-        QKey makeKey(std::size_t);
-        bool keyLess(const QKey&, const QKey&) const;
+        mje::QKey makeKey(std::size_t);
+        bool keyLess(const mje::QKey&, const mje::QKey&) const;
         bool isEdgeInCollision(double, double, double, double, 
                        double, double, double, double);
         std::pair<double, double> samplePoint();

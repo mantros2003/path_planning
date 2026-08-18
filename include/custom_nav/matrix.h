@@ -73,8 +73,8 @@ public:
     inline std::size_t cols() const { return cols_; }
 
     // Getters for accessing the data
-    inline T& operator() (std::size_t i, std::size_t j) { return data_[i*cols_ + j]; }
-    inline const T& operator() (std::size_t i, std::size_t j) const { return data_[i*cols_ + j]; }
+    inline T& operator() (std::size_t i, std::size_t j) { return data_.at(i*cols_ + j); }
+    inline const T& operator() (std::size_t i, std::size_t j) const { return data_.at(i*cols_ + j); }
 
     // Getters to give reference to the complete underlying data
     inline std::vector<T>& data() { return data_; }
@@ -89,6 +89,8 @@ public:
         assert(row.size() == this->cols_);
 
         for (auto& t: row) this->data_.push_back(t);
+        
+        this->rows_++;
     }
 
     void appendRows(mat::Matrix<T>&& other) {

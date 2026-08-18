@@ -25,7 +25,7 @@ void MJERRTXPlanner::initialize (std::string name, costmap_2d::Costmap2DROS* cos
         this->global_frame_id_ = costmap_ros->getGlobalFrameID();
         this->updateCostmapParams();
 
-        goal_ = Point<double, 2>{origin_x, origin_y};
+        this->goal_ = Point<double, 2>{origin_x, origin_y};
 
         ros::NodeHandle private_nh("~/" + name);
 
@@ -96,28 +96,33 @@ bool MJERRTXPlanner::makePlan(
         this->costmap_snapshot_.clear();
         
         // Add new goal node
-        Node root_node(goal.pose.position.x, goal.pose.position.y);
-        root_node.g = 0.0;
-        root_node.lmc = 0.0;
-        this->nodes_.push_back(root_node);
-        this->kd_tree.insert(Point<double, 2>({root_node.state.x, root_node.state.y}));
+        this->nodes_.emplace_back(goal.pose.position.x, goal.pose.position.y);
+        this->nodes_[0].g = 0.0;
+        this->nodes_[0].lmc = 0.0;
+        // this->nodes_.push_back(root_node);
+        this->kd_tree.insert(Point<double, 2>({this->nodes_[0].state.x, this->nodes_[0].state.y}));
 
         this->planned_ = false;
+        this->start_proxy = mje::Node::INVALID_IDX;
 
         buildFreeCellList();
-
-        ROS_INFO("Number of cells in free cell list: %zu", free_cells.size());
+        ROS_INFO("[MJERRTXPlanner] Number of cells in free cell list: %zu", this->free_cells.size());
     }
+    
+    ROS_INFO("[MJERRTXPlanner] Setting start and goal points");
 
     this->goal_ = Point<double, 2>({gx, gy});
     this->start_ = Point<double, 2>({sx, sy});
 
     if (this->nodes_.size() > 1) {
+    	ROS_INFO("[MJERRTXPlanner] Updating start proxy and obstacles");
         this->start_proxy = findStartProxy();
         updateObstacles();
     }
 
     std::size_t iters = 0;
+    
+    ROS_INFO("[MJERRTXPlanner] Starting the planning stage");
 
     while (!this->planned_ && (iters < this->max_iters_))
     {
@@ -125,6 +130,7 @@ bool MJERRTXPlanner::makePlan(
         double x, y;
         std::pair<double, double> sampled_pt = samplePoint();
         x = sampled_pt.first;
+        if (std::isinf(x)) continue;
         y = sampled_pt.second;
 
         // First we convert to map/grid coordinates, then check if it is occupied
@@ -133,16 +139,16 @@ bool MJERRTXPlanner::makePlan(
         Point<double, 2> random_pt({x, y});
 
         // Get the nearest feasible
-        std::pair<std::size_t, State> res = feasibleNearAndSteer(random_pt);
+        std::pair<std::size_t, mje::State> res = feasibleNearAndSteer(random_pt);
         std::size_t nearest_index = res.first;
 
-        if (nearest_index == Node::INVALID_IDX) continue;
+        if (nearest_index == mje::Node::INVALID_IDX) continue;
 
-        Node& near_node = this->nodes_[nearest_index];
+        mje::Node& near_node = this->nodes_[nearest_index];
         Point<double, 2> near_pt{near_node.state.x, near_node.state.y};
 
         // Move in the direction of the random point from the near point
-        State new_state = res.second;
+        mje::State new_state = res.second;
         Point<double, 2> new_pt({new_state.x, new_state.y});
 
         // Check if this point is in bounds
@@ -161,6 +167,9 @@ bool MJERRTXPlanner::makePlan(
         reduceInconsistency();
 
         iters++;
+        
+        if (iters % 100 == 0) ROS_INFO("[MJERRTXPlanner] We have completed %zu iters, we have %zu nodes", iters, this->nodes_.size());
+        
     }
 
     double planning_time = (ros::WallTime::now() - wall_start_time).toSec() * 1000.0;
@@ -225,7 +234,7 @@ bool MJERRTXPlanner::extractPath(
     // Or should we use the start proxy calculated initially
     std::size_t current_idx = findStartProxy();
 
-    if (current_idx == Node::INVALID_IDX) {
+    if (current_idx == mje::Node::INVALID_IDX) {
         ROS_ERROR("[MJERRTXPlanner] Start proxy is invalid despite tree being connected.");
         return false;
     }
@@ -236,8 +245,8 @@ bool MJERRTXPlanner::extractPath(
     std::size_t loop_safety_counter = 0;
     
     // Trace the tree from the start proxy up to the goal root
-    while (current_idx != Node::INVALID_IDX) {
-        const Node& curr_node = nodes_[current_idx];
+    while (current_idx != mje::Node::INVALID_IDX) {
+        const mje::Node& curr_node = nodes_[current_idx];
 
         geometry_msgs::PoseStamped pose;
         pose.header.stamp = start_time;
@@ -267,7 +276,7 @@ bool MJERRTXPlanner::extractPath(
             ROS_ERROR("[RRTXPlanner] Infinite loop detected during path extraction");
             plan.clear();
             for (int i = 0; i < 5; i++) {
-                const Node& curr_node = nodes_[current_idx];
+                const mje::Node& curr_node = nodes_[current_idx];
                 ROS_ERROR("Node index: %lu\tparent: %lu\t pos: (%f, %f)\tg: %f\tlmc: %f\tdist_to_par: %f", current_idx, curr_node.par_idx, curr_node.state.x, curr_node.state.y, curr_node.g, curr_node.lmc, distance(current_idx, curr_node.par_idx));
                 current_idx = curr_node.par_idx;
             }
@@ -313,11 +322,11 @@ bool MJERRTXPlanner::isConnected(double sx, double sy) {
 
     std::vector<std::size_t> neighbors = kd_tree.radius_search(start_pt, step_length_);
 
-    std::size_t best_index = Node::INVALID_IDX;
+    std::size_t best_index = mje::Node::INVALID_IDX;
     double min_distance = std::numeric_limits<double>::infinity();
 
     for (std::size_t idx: neighbors) {
-        Node& n = nodes_[idx];
+        mje::Node& n = nodes_[idx];
 
         if (std::isinf(n.g)) continue;
 
@@ -330,23 +339,23 @@ bool MJERRTXPlanner::isConnected(double sx, double sy) {
         }
     }
 
-    return best_index != Node::INVALID_IDX;
+    return best_index != mje::Node::INVALID_IDX;
 }
 
 /* Adds a new point to the tree */
-void MJERRTXPlanner::addPointToTree(State new_state, std::size_t near_idx) {
+void MJERRTXPlanner::addPointToTree(mje::State new_state, std::size_t near_idx) {
     this->nodes_.emplace_back(new_state.x, new_state.y, new_state.theta);
-    Node& new_node = this->nodes_.back();
+    mje::Node& new_node = this->nodes_.back();
     new_node.par_idx = near_idx;
 
-    Node& near_node = this->nodes_[near_idx];
+    mje::Node& near_node = this->nodes_[near_idx];
 
     // Get all points close to the node
     std::vector<std::size_t> neighbors = this->kd_tree.radius_search(Point<double, 2>({new_state.x, new_state.y}), this->radius_);
 
     // Add neighbors
     for (std::size_t nbr_idx: neighbors) {
-        Node& nbr = this->nodes_[nbr_idx];
+        mje::Node& nbr = this->nodes_[nbr_idx];
 
         if (!hasObstacle(new_state.x, new_state.y, nbr.state.x, nbr.state.y)) {
             new_node.nbr_init.push_back(nbr_idx);
@@ -368,21 +377,22 @@ void MJERRTXPlanner::addPointToTree(State new_state, std::size_t near_idx) {
  * Returns a pair: near node's index, and the random state
  * Index is std::size_t::max if no feasible node is found
  */
-std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double, 2> rand_pt) {
+std::pair<std::size_t, mje::State> MJERRTXPlanner::feasibleNearAndSteer(Point<double, 2> rand_pt) {
     // Get the nearest node to the random point
     // And search in a circle of c * near_dist
     std::size_t nearest = this->kd_tree.nearest(rand_pt);
-    State& nearest_node_state = this->nodes_[nearest].state;
+    mje::State& nearest_node_state = this->nodes_[nearest].state;
     Point<double, 2> nearest_pt({nearest_node_state.x, nearest_node_state.y});
     std::vector<std::size_t> neighbors =
-        this->kd_tree.radius_search(rand_pt, 1.5 * rand_pt.distance(nearest_pt));
+        this->kd_tree.radius_search(rand_pt, 1.1 * rand_pt.distance(nearest_pt));
     sortVector(neighbors);
+    // std::vector<std::size_t> neighbors = {nearest};
 
-    State random_state{rand_pt[0], rand_pt[1], 0};
+    mje::State random_state{rand_pt[0], rand_pt[1], 0};
     
     // Iterating over neighbors to find a suitable parent
     for (std::size_t nbr_idx: neighbors) {
-        Node& node = this->nodes_[nbr_idx];
+        mje::Node& node = this->nodes_[nbr_idx];
 
         double dx = node.state.x - rand_pt[0], dy = node.state.y - rand_pt[1];
         random_state.theta = std::atan2(dy, dx);
@@ -406,10 +416,10 @@ std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double,
         if (hasObstacle(random_state.x, random_state.y, node.state.x, node.state.y)) continue;
 
 
-        return std::pair<std::size_t, State>(nbr_idx, random_state);
+        return std::pair<std::size_t, mje::State>(nbr_idx, random_state);
     }
 
-    return {Node::INVALID_IDX, random_state};
+    return {mje::Node::INVALID_IDX, random_state};
 }
 
 // TODO: Check this function, if it is needed or not
@@ -463,7 +473,7 @@ std::pair<std::size_t, State> MJERRTXPlanner::feasibleNearAndSteer(Point<double,
  * Try to re-route the the neighbours through the new node
  */
 void MJERRTXPlanner::rewireNeighbors(std::size_t node_idx) {
-    Node& node = this->nodes_[node_idx];
+    mje::Node& node = this->nodes_[node_idx];
 
     if (node.g - node.lmc <= this->epsilon_) return;
 
@@ -473,7 +483,7 @@ void MJERRTXPlanner::rewireNeighbors(std::size_t node_idx) {
         for (std::size_t nbr_idx: neighbors) {
             if (nbr_idx == node.par_idx || nbr_idx == node_idx) continue;
 
-            Node& nbr_node = this->nodes_[nbr_idx];
+            mje::Node& nbr_node = this->nodes_[nbr_idx];
 
             double chord_length = std::hypot(nbr_node.state.y - node.state.y,
                     nbr_node.state.x - node.state.x);
@@ -488,7 +498,7 @@ void MJERRTXPlanner::rewireNeighbors(std::size_t node_idx) {
 
             if (new_cost < nbr_node.lmc) {
                 nbr_node.lmc = new_cost;
-                if (nbr_node.par_idx != Node::INVALID_IDX) {
+                if (nbr_node.par_idx != mje::Node::INVALID_IDX) {
                     this->nodes_[nbr_node.par_idx].removeChild(nbr_idx);
                 }
                 nbr_node.par_idx = node_idx;
@@ -498,16 +508,19 @@ void MJERRTXPlanner::rewireNeighbors(std::size_t node_idx) {
             }
         }
     };
+    
+    rewire(node.nbr_init);
+    rewire(node.nbr_running);
 }
 
 void MJERRTXPlanner::cullNeighbors(std::size_t node_idx) {
-    Node& node = this->nodes_[node_idx];
+    mje::Node& node = this->nodes_[node_idx];
     
     // We use remove_if to cleanly filter the vector
     node.nbr_running.erase(
         std::remove_if(node.nbr_running.begin(), node.nbr_running.end(),
             [&](std::size_t nbr_idx) {
-                Node& nbr = this->nodes_[nbr_idx];
+                mje::Node& nbr = this->nodes_[nbr_idx];
 
                 // If the neighbor is now outside the shrinking radius
                 if (utils::distance<double>(node.state.x, node.state.y, nbr.state.x, nbr.state.y) > this->radius_) {
@@ -531,14 +544,14 @@ void MJERRTXPlanner::reduceInconsistency() {
     auto topKey = [&]() { return *this->queue_.begin(); };
 
     // Make key and extract the closest node to the current bot position
-    QKey botKey;
-    Node* bot = nullptr;
-    Node _bot;
-    if (start_proxy == Node::INVALID_IDX) {
+    mje::QKey botKey;
+    mje::Node* bot = nullptr;
+    mje::Node _bot;
+    if (start_proxy == mje::Node::INVALID_IDX) {
         double dist = 1.3 * utils::distance<double>(start_[0], start_[1], goal_[0], goal_[1]);
         botKey.k1 = dist;
         botKey.k2 = dist;
-        botKey.index = Node::INVALID_IDX;
+        botKey.index = mje::Node::INVALID_IDX;
 
         _bot.state.x = start_[0]; _bot.state.y = start_[1];
         _bot.g = dist;
@@ -567,7 +580,7 @@ void MJERRTXPlanner::reduceInconsistency() {
 
         if (v_idx == 0) ROS_WARN("[RRTXPlanner] Root is in the queue");
 
-        Node& v = this->nodes_[v_idx];
+        mje::Node& v = this->nodes_[v_idx];
         v.in_queue = false;
 
         if (v.g - v.lmc > this->epsilon_) {
@@ -578,7 +591,7 @@ void MJERRTXPlanner::reduceInconsistency() {
         v.g = v.lmc;
         
         // Update botKey just in case the proxy's cost changed during the loop
-        if (this->start_proxy != Node::INVALID_IDX) botKey = makeKey(start_proxy);
+        if (this->start_proxy != mje::Node::INVALID_IDX) botKey = makeKey(start_proxy);
     }
 }
 
@@ -590,7 +603,7 @@ void MJERRTXPlanner::flushQueue() {
         this->queue_.erase(top);
         this->queueMap_.erase(v_idx);
 
-        Node& v = this->nodes_[v_idx];
+        mje::Node& v = this->nodes_[v_idx];
         v.in_queue = false;
 
         if (v.g - v.lmc > this->epsilon_) {
@@ -613,7 +626,7 @@ void MJERRTXPlanner::updateLMC(std::size_t v_idx) {
 
     cullNeighbors(v_idx);
     
-    Node& v = nodes_[v_idx];
+    mje::Node& v = nodes_[v_idx];
     
     std::pair<std::size_t, double> res = findBestParent(v_idx, &v.nbr_running);
     std::size_t best_par_idx = res.first; double best_cost = res.second;
@@ -627,8 +640,8 @@ void MJERRTXPlanner::updateLMC(std::size_t v_idx) {
     if (v.lmc < best_cost) return;
 
     if (v.par_idx != best_par_idx) {
-        if (v.par_idx != Node::INVALID_IDX) this->nodes_[v.par_idx].removeChild(v_idx);
-        if (best_par_idx != Node::INVALID_IDX) this->nodes_[best_par_idx].children.push_back(v_idx);
+        if (v.par_idx != mje::Node::INVALID_IDX) this->nodes_[v.par_idx].removeChild(v_idx);
+        if (best_par_idx != mje::Node::INVALID_IDX) this->nodes_[best_par_idx].children.push_back(v_idx);
         v.par_idx = best_par_idx;
     }
     v.lmc = best_cost;
@@ -642,7 +655,7 @@ void MJERRTXPlanner::updateLMC(std::size_t v_idx) {
  */
 std::pair<std::size_t, double> MJERRTXPlanner::findBestParent(
         std::size_t child_idx, Vector<std::size_t>* neighbors) {
-    Node& child_node = this->nodes_[child_idx];
+    mje::Node& child_node = this->nodes_[child_idx];
 
     Vector<std::size_t> _neighbors;
 
@@ -659,7 +672,7 @@ std::pair<std::size_t, double> MJERRTXPlanner::findBestParent(
     for (std::size_t nbr_idx: *neighbors) {
         if (nbr_idx == child_idx || nbr_idx == child_node.par_idx) continue;
 
-        Node& nbr_node = this->nodes_[nbr_idx];
+        mje::Node& nbr_node = this->nodes_[nbr_idx];
 
         double Kmax;
         bool singular;
@@ -766,7 +779,7 @@ void MJERRTXPlanner::removeObstacle(unsigned int i) {
 
     // Restoration cascade
     for (std::size_t v_idx : affected_nodes) {
-        Node& v = this->nodes_[v_idx];
+        mje::Node& v = this->nodes_[v_idx];
 
         // Copy set to allow safe erasure during iteration
         std::vector<std::size_t> neighbors_to_check(v.blocked_nbrs.begin(), v.blocked_nbrs.end());
@@ -774,7 +787,7 @@ void MJERRTXPlanner::removeObstacle(unsigned int i) {
         for (std::size_t u_idx: neighbors_to_check) {
             if (v_idx > u_idx) continue;
 
-            Node& u = this->nodes_[u_idx];
+            mje::Node& u = this->nodes_[u_idx];
 
             // Verify the edge is clear against all remaining obstacles
             if (!hasObstacle(Point<double, 2>({v.state.x, v.state.y}), Point<double, 2>({u.state.x, u.state.y}))) {
@@ -809,11 +822,11 @@ void MJERRTXPlanner::addObstacle(unsigned int i) {
     double xmax = xmin + this->resolution_;
     double ymax = ymin + this->resolution_;
 
-    auto process_neighbors = [&] (const auto& neighbors, Node& v, std::size_t v_idx) {
+    auto process_neighbors = [&] (const auto& neighbors, mje::Node& v, std::size_t v_idx) {
         for (std::size_t u_idx : neighbors) {
             if (v.blocked_nbrs.count(u_idx) > 0) continue;
 
-            Node& u = this->nodes_[u_idx];
+            mje::Node& u = this->nodes_[u_idx];
 
             if (isEdgeInCollision(
                     u.state.x, u.state.y, v.state.x, v.state.y,
@@ -834,7 +847,7 @@ void MJERRTXPlanner::addObstacle(unsigned int i) {
     // Get the points that are within step_length_ of the obstacle
     std::vector<std::size_t> possible_invalidated_points = kd_tree.radius_search(Point<double, 2>({xmin, ymin}), this->step_length_ + this->resolution_);
     for (std::size_t v_idx: possible_invalidated_points) {
-        Node& v = this->nodes_[v_idx];
+        mje::Node& v = this->nodes_[v_idx];
 
         process_neighbors(v.nbr_running, v, v_idx);
         process_neighbors(v.nbr_init, v, v_idx);
@@ -845,7 +858,7 @@ void MJERRTXPlanner::addObstacle(unsigned int i) {
  * Checks if a QBC can be made between the nodes
  * The QBC must follow the curvature cosntraints
  */
-bool MJERRTXPlanner::isFeasible(State child_state, State par_state,
+bool MJERRTXPlanner::isFeasible(mje::State child_state, mje::State par_state,
         double& Kmax, bool& singular) {
     double dx = par_state.x - child_state.x, dy = par_state.y - child_state.y;
     double chord_length = std::hypot(dx, dy);
@@ -876,7 +889,7 @@ bool MJERRTXPlanner::isFeasible(State child_state, State par_state,
 }
 
 /* Calculates arclength of QBC using lookup table */
-double MJERRTXPlanner::getarclength(State child_state, State par_state) {
+double MJERRTXPlanner::getarclength(mje::State child_state, mje::State par_state) {
     double dx = par_state.x - child_state.x;
     double dy = par_state.y - child_state.y;
     double chord_length = std::hypot(dx, dy);
@@ -960,10 +973,10 @@ void MJERRTXPlanner::propogateDescendents() {
 
     // Invalidate neighboring nodes that rely on these orphans
     for (std::size_t v_idx : this->orphan_set_) {
-        const Node& v = this->nodes_[v_idx];
+        const mje::Node& v = this->nodes_[v_idx];
         
         auto invalidate_neighbor = [&](std::size_t u_idx) {
-            if (u_idx != 0 && u_idx != Node::INVALID_IDX && this->orphan_set_.count(u_idx) == 0) {
+            if (u_idx != 0 && u_idx != mje::Node::INVALID_IDX && this->orphan_set_.count(u_idx) == 0) {
                 if (u_idx == 0) ROS_WARN("[MJERRTXPlanner] Root is being added to the queue");
                 this->nodes_[u_idx].g = std::numeric_limits<double>::infinity();
                 verifyQueue(u_idx);
@@ -978,13 +991,13 @@ void MJERRTXPlanner::propogateDescendents() {
     // Sever all tree connections of the nodes in orphan set
     for (std::size_t v_idx: this->orphan_set_) {
         if (v_idx == 0) ROS_WARN("[MJERRTXPlanner] Root is in the orphan set");
-        Node& v = this->nodes_[v_idx];
+        mje::Node& v = this->nodes_[v_idx];
         v.g = std::numeric_limits<double>::infinity();
         v.lmc = std::numeric_limits<double>::infinity();
 
-        if (v.par_idx != Node::INVALID_IDX) {
+        if (v.par_idx != mje::Node::INVALID_IDX) {
             this->nodes_[v.par_idx].removeChild(v_idx);
-            v.par_idx = Node::INVALID_IDX;
+            v.par_idx = mje::Node::INVALID_IDX;
         }
     }
 
@@ -1003,10 +1016,10 @@ std::size_t MJERRTXPlanner::findStartProxy() {
         this->kd_tree.radius_search(this->start_, search_radius);
 
     double min_dist = std::numeric_limits<double>::infinity();
-    std::size_t best_visible_proxy = Node::INVALID_IDX;
+    std::size_t best_visible_proxy = mje::Node::INVALID_IDX;
 
     for (std::size_t nbr_idx : local_neighbors) {
-        Node& nbr = this->nodes_[nbr_idx];
+        mje::Node& nbr = this->nodes_[nbr_idx];
 
         if (std::isinf(nbr.lmc)) continue;
 
@@ -1045,9 +1058,9 @@ void MJERRTXPlanner::verifyQueue(std::size_t node_idx) {
         ROS_WARN("[MJERRTXPlanner] Root is being added to queue");
         return;
     }
-    if (node_idx == Node::INVALID_IDX) return;
+    if (node_idx == mje::Node::INVALID_IDX) return;
 
-    QKey key = makeKey(node_idx);
+    mje::QKey key = makeKey(node_idx);
     auto it = this->queueMap_.find(node_idx);
     if (it == this->queueMap_.end()) {
         this->queueMap_.insert({node_idx, key});
@@ -1060,10 +1073,10 @@ void MJERRTXPlanner::verifyQueue(std::size_t node_idx) {
     }
 }
 
-QKey MJERRTXPlanner::makeKey(std::size_t v_idx) {
-    Node& v = this->nodes_[v_idx];
+mje::QKey MJERRTXPlanner::makeKey(std::size_t v_idx) {
+    mje::Node& v = this->nodes_[v_idx];
     
-    QKey key;
+    mje::QKey key;
     key.k1 = std::min(v.g, v.lmc);
     key.k2 = v.g;
     key.index = v_idx;
@@ -1075,7 +1088,7 @@ QKey MJERRTXPlanner::makeKey(std::size_t v_idx) {
  * Returns true if a is less than b
  * We don't just return a < b as that compares index if both keys are equal
  */
-bool MJERRTXPlanner::keyLess(const QKey& a, const QKey& b) const {
+bool MJERRTXPlanner::keyLess(const mje::QKey& a, const mje::QKey& b) const {
     if (a.k1 != b.k1) return a.k1 < b.k1;
     return a.k2 < b.k2;
 }
@@ -1126,6 +1139,8 @@ bool MJERRTXPlanner::isEdgeInCollision(double x0, double y0, double x1, double y
  * Then adds random noise so that the final point is a random point from inside the cell
  */
 std::pair<double, double> MJERRTXPlanner::samplePoint() {
+	if (this->free_cells.empty())
+		return std::pair<double, double>(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
     std::size_t num_free_cells = this->free_cells.size();
     std::uniform_int_distribution<> distr(0, num_free_cells - 1);
 
@@ -1161,18 +1176,78 @@ void MJERRTXPlanner::buildFreeCellList() {
 void MJERRTXPlanner::sortVector(std::vector<std::size_t>& points) {
     std::sort(points.begin(), points.end(),
             [&] (const std::size_t& a, const std::size_t& b) {
-                State& a_state = this->nodes_[a].state;
-                State& b_state = this->nodes_[b].state;
+                mje::State& a_state = this->nodes_[a].state;
+                mje::State& b_state = this->nodes_[b].state;
                 return utils::squared_dist<double>(a_state.x, a_state.y, this->goal_[0], this->goal_[1]) <
                 utils::squared_dist<double>(b_state.x, b_state.y, this->goal_[0], this->goal_[1]);
             });
 }
 
 /**
+ * Sends a visualization message to visualize the tree in Rviz
+ */
+void MJERRTXPlanner::buildTreeMarker(const std::string& frame_id) {
+    visualization_msgs::Marker marker;
+
+    marker.header.frame_id = frame_id;
+    marker.header.stamp = ros::Time::now();
+
+    marker.ns = "search_tree";
+    marker.id = 0;
+
+    marker.type = visualization_msgs::Marker::LINE_LIST;
+    marker.action = visualization_msgs::Marker::ADD;
+
+    marker.pose.orientation.w = 1.0;
+
+    // line width
+    marker.scale.x = 0.01;
+
+    // green
+    marker.color.r = 0.0;
+    marker.color.g = 1.0;
+    marker.color.b = 0.0;
+    marker.color.a = 1.0;
+
+    if (nodes_.empty()) tree_pub_.publish(marker);
+
+    std::stack<mje::Node*> st;
+    st.push(&nodes_[0]);
+
+    while (!st.empty()) {
+        mje::Node* parent = st.top();
+        st.pop();
+
+        for (std::size_t child_idx : parent->children) {
+            mje::Node* child = &nodes_[child_idx];
+
+            geometry_msgs::Point p1;
+            p1.x = parent->state.x;
+            p1.y = parent->state.y;
+            p1.z = 0.05;
+
+            geometry_msgs::Point p2;
+            p2.x = child->state.x;
+            p2.y = child->state.y;
+            p2.z = 0.05;
+
+            marker.points.push_back(p1);
+            marker.points.push_back(p2);
+
+            st.push(child);
+        }
+    }
+
+    ROS_INFO("[RRTXPlanner] Number of points reachable by goal node: %zu", marker.points.size());
+
+    tree_pub_.publish(marker);
+}
+
+/**
  * Removes the child by swapping it with last element and popping
  * Works only if order of nodes does not matter
  */
-void Node::removeChild(std::size_t child_idx) {
+void mje::Node::removeChild(std::size_t child_idx) {
     auto it = std::find(this->children.begin(), this->children.end(), child_idx);
 
     if (it != this->children.end()) {

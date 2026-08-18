@@ -31,7 +31,7 @@ bool loadParamString(ros::NodeHandle& nh, std::string param, std::string& output
 }
 
 /* Utility function to print the stack trace and abort */
-inline void print_stack_trace_and_abort() {
+void print_stack_trace_and_abort() {
     fprintf(stderr, "\n[FATAL] SafeVector Out-of-Bounds Access Detected!\n");
     fprintf(stderr, "--- STACK TRACE ---\n");
     
@@ -45,7 +45,7 @@ inline void print_stack_trace_and_abort() {
 }
 
 /* Print stack trace using boost and exit */
-inline void print_stack_trace_and_abort_boost() {
+void print_stack_trace_and_abort_boost() {
     std::cerr << "=========================================\n";
     std::cerr << "Fatal Error: Out of bounds or invalid access!\n";
     std::cerr << "Stack trace:\n";
@@ -56,4 +56,4 @@ inline void print_stack_trace_and_abort_boost() {
     std::abort();
 }
 
-}
+} // ns utils

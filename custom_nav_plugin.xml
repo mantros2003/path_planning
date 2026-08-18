@@ -29,6 +29,12 @@
         <description></description>
     </class>
 
+    <class name="custom_planner/MJERRTXPlanner"
+           type="custom_planner::MJERRTXPlanner"
+           base_class_type="nav_core::BaseGlobalPlanner">
+        <description></description>
+    </class>
+
     <class name="custom_planner/AStarPlanner"
            type="custom_planner::AStarPlanner"
            base_class_type="nav_core::BaseGlobalPlanner">

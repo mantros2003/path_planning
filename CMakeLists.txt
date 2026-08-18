@@ -160,12 +160,15 @@ target_link_libraries(kd_tree_lib
 
 add_library(custom_planner_lib
     src/utils.cpp
+    src/mjetable.cpp
+    src/bezier.cpp
     plugins/dijkstra_planner.cpp
     plugins/a_star.cpp
     plugins/rrt.cpp
     plugins/rrt_kd.cpp
     plugins/rrt_star.cpp
     plugins/rrt_x.cpp
+    plugins/mje_rrt_x.cpp
 )
 
 target_link_libraries(custom_planner_lib

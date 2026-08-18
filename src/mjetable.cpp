@@ -44,6 +44,8 @@ void ConstraintTable::buildTable(
 
     n_ = this->theta_rad_.rows() * this->theta_rad_.cols();
     dtheta_ = theta_rad_.data()[1] - theta_rad_.data()[0];
+
+    std::cout << "initialized with n_: " << n_ << "\tdtheta_: " << dtheta_ << std::endl;
 }
 
 std::pair<double, double> ConstraintTable::getcurvature(double theta0, double theta5) const {
@@ -169,6 +171,10 @@ bool readNumpyArray(const std::string& filename, mat::Matrix<double>& result)
     }
 
     result.assign(rows, cols, std::move(data));
+    
+    std::cout << "Loaded " << filename << " \n";
+    std::cout << "\tShape: (" << rows << ", " << cols << ")\n";
+    std::cout << "\tTotal elements: " << result.data().size() << std::endl;
 
     return true;
 }

@@ -2,6 +2,8 @@
 #define KD_TREE_X_H_
 
 #include <vector>
+#include <array>
+#include <algorithm>
 #include <cmath>
 #include <utility>
 #include <random>
@@ -151,7 +153,7 @@ void kdTree<T, D>::_insert(int root, std::size_t index, const Point<T, D>& p, st
 // Internal recursive nns function
 template <typename T, std::size_t D>
 void kdTree<T, D>::_nearest(int root, const Point<T, D>& p, std::size_t depth, int& best_node, double& min_dist) {
-    if (this->root == -1) return;
+    if (root == -1) return;
 
     // double d = squared_dist(nodes[root].p[0], nodes[root].p[1],
     //                         p[0], p[1]);
