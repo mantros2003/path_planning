@@ -88,10 +88,10 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
         sampling_min_y_(0.0), sampling_max_y_(0.0),
         rad_const_(4.0),
         obstacle_cost_threshold_(1),
-        step_length_(0.2),          // Default edge length
+        step_length_(0.35),          // Default edge length
         goal_tolerance_(0.2),       // Default tolerance to reach goal
         epsilon_(0.1),              // Default epsilon for collision checking/math
-        max_iters_(6000),           // Default maximum iterations before giving up
+        max_iters_(10000),           // Default maximum iterations before giving up
         rng(std::random_device{}()),// Initialize the random number genera with the random device
         rand01(0.0, 1.0),           // Initialize the distribution
         radius_(0.3),
@@ -160,10 +160,11 @@ class MJERRTXPlanner : public nav_core::BaseGlobalPlanner
 
         // Functions
         void updateCostmapParams();
-        void addPointToTree(mje::State, std::size_t);
+        bool addPointToTree(mje::State, std::size_t);
         bool extractPath(const geometry_msgs::PoseStamped&, const geometry_msgs::PoseStamped&, std::vector<geometry_msgs::PoseStamped>&, ros::Time);
         bool validatePoint(double, double);
         std::pair<std::size_t, mje::State> feasibleNearAndSteer(Point<double, 2>);
+        void rewireNewPointFeasible(std::size_t);
         void reduceInconsistency();
         void flushQueue();
         void rewireNeighbors(std::size_t);
